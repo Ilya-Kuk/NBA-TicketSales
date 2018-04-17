@@ -18,21 +18,23 @@ variables_used <- as.character(variables_used)
 v_c <- c()
 j_c <- c()
 Not_Variables <- c()
+Are_Variables <- c()
 all_variables <- colnames(dataset)
 first_col <- rep(NA, times=nrow(dataset))
 new_dataset <- data.frame(first_col)
-for(i in setdiff(1:length(variables_used),38)){ #post_playoffs_tix is in data dictionary, but not sample dataset. Here, that is variables_used[38]
+for(i in 1:length(variables_used)){
   V <- variables_used[i]
     v_c <- c(v_c,V)
   J <- match(V,all_variables)
     j_c <- c(j_c,J)
   ifelse(
-    is.na,
+    is.na(J),
     Not_Variables <- c(Not_Variables,V),
     new_dataset <- cbind(new_dataset,dataset[,J])
-    
   )
 }
 new_dataset <- new_dataset[,-1]
+#Are_Variables <- c(Are_Variables,V)
+
 
 cy <- post_tickets_flag
