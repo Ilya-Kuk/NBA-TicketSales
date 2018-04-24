@@ -1,9 +1,11 @@
 ## Importing Packages and Setting Seed
 
-install.packages("tree")
+#install.packages("tree")
 require(tree)
-install.packages('randomForest')
+#install.packages('randomForest')
 library(randomForest)
+#install.packages("gbm",repos='http://cran.us.r-project.org')
+library(gbm)
 
 set.seed(1)
 
@@ -15,7 +17,7 @@ nbatktsdf=data.frame(nbatkts)
 
 #Creating subset that my computer can handle
  #match(nbatkts$post_tickets_flag,1)
- #dataset <- nbatktsdf[c(1:100,601:700),]
+ #dataset <- nbatktsdf[c(1:300,601:800),]
  ## Otherwise, uncomment next line
 dataset <- nbatktsdf
 rm(nbatktsdf,nbatkts) #cleaning up environment space
@@ -75,33 +77,15 @@ plot(tree.nba)
 text(tree.nba,pretty=0)
 #Training Set and Test Set
 train <- sample(1:nrow(new_dataset), nrow(new_dataset)*(.8))
-new_dataset_train <- new_dataset[train,] #train X
-new_dataset_test <- new_dataset[-train,] #test X
-ptf_test <- post_tickets_flag[-train] #test y
 #Estimate Error Rate
 tree.nba_train <- tree(post_tickets_flag~., new_dataset, subset=train)
 plot(tree.nba_train)
 text(tree.nba_train,pretty=0)
-######## What's going on here?
-tree.nba_pred <- predict(tree.nba_train, ptf_test, type="class")
+tree.nba_pred <- predict(tree.nba_train, new_dataset[-train,], type="class")
 length(tree.nba_pred)
-length(ptf_test)
-##
-tree.nba_pred <- predict(tree.nba_train, post_tickets_flag[-train], type="class")
-length(tree.nba_pred)
-length(post_tickets_flag[-train])
-##
-tree.nba_pred <- predict(tree.nba_train, post_tickets_flag[train], type="class")
-length(tree.nba_pred)
-length(post_tickets_flag[train])
-##
-tree.nba_pred <- predict(tree.nba_train, post_tickets_flag, type="class")
-length(tree.nba_pred)
-length(post_tickets_flag)
-########
-table(tree.nba_pred, post_tickets_flag)
-M <- table(tree.nba_pred, post_tickets_flag)
-print(paste("The <TEST> error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
+M <- table(tree.nba_pred, post_tickets_flag[-train])
+M
+print(paste("The test error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
 #Pruning Tree
 cv.nba_train <- cv.tree(tree.nba_train, FUN=prune.misclass)
 cv.nba_train
@@ -110,32 +94,38 @@ print(paste("The best trees seem to be of size",cv.nba_train$size[b],"with cross
 prune.nba_train <- prune.misclass(tree.nba_train, best=11)
 plot(prune.nba_train)
 text(prune.nba_train,pretty=0)
-prune.nba_pred <- predict(prune.nba_train, ptf_test, type="class")
-########
+prune.nba_pred <- predict(prune.nba_train, new_dataset[-train,], type="class")
 length(prune.nba_pred)
-########
-M_prune <- table(prune.nba_pred, post_tickets_flag)
+M_prune <- table(prune.nba_pred, post_tickets_flag[-train])
 M_prune
-print(paste("The <TEST> error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
-print("Not much better at all...")
+print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
+print("A bit better...")
 
 #Creating Bagged Tree
 new_dataset0 <- new_dataset
 new_dataset0[is.na(new_dataset0)] <- 0
 attach(new_dataset0)
 bag.nba_train <- randomForest(post_tickets_flag~., data=new_dataset0, subset=train, mtry=ncol(new_dataset0)-1, importance=TRUE)
-######## forces to use entire response variable, not test response variable
-bag.nba_pred <- predict(bag.nba_train, post_tickets_flag, type="class")
-########
-M_bag <- table(bag.nba_pred, post_tickets_flag)
+bag.nba_pred <- predict(bag.nba_train, new_dataset0[-train,], type="class")
+M_bag <- table(bag.nba_pred, post_tickets_flag[-train])
 M_bag
-print(paste("The <TEST> error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag))),"HORRIBLE..."))
+print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
+print("Better yet.")
 
 #Creating Random Forest
 RF.nba_train <- randomForest(post_tickets_flag~., data=new_dataset0, subset=train, importance=TRUE)
-######## forces to use entire response variable, not test response variable
-RF.nba_pred <- predict(RF.nba_train, post_tickets_flag, type="class")
-########
-M_RF <- table(RF.nba_pred, post_tickets_flag)
+RF.nba_pred <- predict(RF.nba_train, new_dataset0[-train,], type="class")
+M_RF <- table(RF.nba_pred, post_tickets_flag[-train])
 M_RF
-print(paste("The <TEST> error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag))),"HORRIBLE..."))
+print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
+print("A bit worse... What makes a good mtry argument? What about ntree? Use lab chapter 8 first question.")
+
+#Creating Boosted Tree
+boost.nba_train <- gbm(post_tickets_flag~., new_dataset[train], distribution='gaussian', n.trees=5000, interaction.depth=4)
+boost.nba_pred <- predict(boost.nba_train, new_dataset[-train,], type='class')
+M_boost <- table(boost.nba_pred, post_tickets_flag[-train])
+M_boost
+print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
+print("Make the same kind of heatmap using shrinkage and interaction.depth?")
+
+
