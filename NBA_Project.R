@@ -141,8 +141,6 @@ dataset.ptt <- new_dataset[,-c(33,35:43)]
 colnames(dataset.ptt)[31:36] #looks good!
 attach(dataset.ptt)
 
-#TO DO: INTERPERET RESULTS , FIGURE OUT THE HEATMAP THING AND MAKE THEM , FOR REGRESSION TREES - MAKE BOXPLOT OF NON-ZERO VALUES FOR RESPONSE VARIABLES IN ORDER TO GAUGE MEAN SQUARED ERROR EFFECTIVELY
-
 #Growing Preliminary Regression Tree
 tree.ptt <- tree(post_total_tickets~., dataset.ptt)
 plot(tree.ptt)
@@ -204,7 +202,12 @@ print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", i
 
 print("Seems like there's not enough useful data for this prediction.")
 
-#B)
+
+#TO DO: INTERPERET RESULTS , FIGURE OUT THE HEATMAP THING AND MAKE THEM , FOR REGRESSION TREES - MAKE BOXPLOT OF NON-ZERO VALUES FOR RESPONSE VARIABLES IN ORDER TO GAUGE MEAN SQUARED ERROR EFFECTIVELY
+
+
+###B)
+
 #Removing other response variables besides post_total_ticket_amt, index is 33
 dataset.pttm <- new_dataset[,-c(34:43)]
 colnames(dataset.pttm)[31:35] #looks good!
@@ -249,7 +252,7 @@ plot(bag.pttm_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.bag.pttm <- mean((bag.pttm_pred-post_total_ticket_amt[-train])^2)
 MSE.bag.pttm
-print(paste("Test MSE is",MSE.bag.pttm,". Root MSE is",sqrt(MSE.bag.pttm),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.pttm),1),"total money spent on tickets."))
+print(paste("Test MSE is",MSE.bag.pttm,". Root MSE is",sqrt(MSE.bag.pttm),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.pttm),1),"total money spent on tickets. Better!"))
 
 #Creating Random Forest
 RF.pttm_train <- randomForest(post_total_ticket_amt~., data=dataset.pttm0, subset=train, importance=TRUE)
