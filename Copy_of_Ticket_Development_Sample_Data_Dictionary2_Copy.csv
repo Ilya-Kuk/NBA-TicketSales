@@ -1,0 +1,371 @@
+order,select,Variable,Type,Len,Format,Definition,,
+1,1,individual_id_str,Char,16,$16.00 ,Customer ID,,
+2,0,arc,Num,8,,"DO NOT USE.
+These are used to select records for the sample. They shouldn't be used as dependent variables.",,
+3,0,arc_ticket,Num,8,,,,
+4,0,vtx,Num,8,,,,
+5,0,tmc,Num,8,,,,
+6,0,pac,Num,8,,,,
+7,0,trn,Num,8,,,,
+8,0,fan,Num,8,,,,
+9,0,nel,Num,8,,,,
+10,0,vtx_flash,Num,8,,,,
+11,0,tmc_resale,Num,8,,,,
+12,0,agg_id,Num,8,11,,,
+13,0,team_only,Num,8,11,,,
+14,0,src_tkx,Char,4,$4.00 ,,,
+15,1,has_email,Num,8,11,Indicator = 1 if customer has an email address,,
+16,1,tenure_arc,Num,8,6,Fan came from Archtics (tickets),These are the differet sources a fan can come to the NBA from. Each variables indicates if a Fan was present in one of these sources.  These are not mutually exclusive.,
+17,1,tenure_tmc,Num,8,6,Fan came from TicketMaster (tickets),,
+18,1,tenure_tmc_resale,Num,8,6,Fan came from TicketMaster Resale (tickets),,
+19,1,tenure_pac,Num,8,6,Fan came from Paciolan (tickets),,
+20,1,tenure_vtx,Num,8,6,Fan came from Veritix (tickets),,
+21,1,tenure_vtx_flash,Num,8,6,Fan came from Veritix Flash (tickets),,
+22,1,tenure_trn,Num,8,6,Fan came from Turner (email),,
+23,1,tenure_fan,Num,8,6,Fan came from Fanatics (retail),,
+24,1,tenure_nel,Num,8,6,Fan came from Neulion (League Pass),,
+25,1,days_since_most_recent_email,Num,8,11,"Email Activity: Measures how many or how long since a customer received, opened, clicked on an NBA Email",,
+26,1,days_since_most_recent_open,Num,8,11,,,
+27,1,days_since_most_recent_click,Num,8,11,,,
+28,1,tot_emails_30_days_prior,Num,8,11,,,
+29,1,tot_emails_60_days_prior,Num,8,11,,,
+30,1,tot_emails_90_days_prior,Num,8,11,,,
+31,1,tot_opens_30_days_prior,Num,8,11,,,
+32,1,tot_opens_60_days_prior,Num,8,11,,,
+33,1,tot_opens_90_days_prior,Num,8,11,,,
+34,1,tot_clicks_30_days_prior,Num,8,11,,,
+35,1,tot_clicks_60_days_prior,Num,8,11,,,
+36,1,tot_clicks_90_days_prior,Num,8,11,,,
+37,1,tot_emails_12_mon_prior,Num,8,11,,,
+38,1,tot_emails_24_mon_prior,Num,8,11,,,
+39,1,tot_emails_36_mon_prior,Num,8,11,,,
+40,1,tot_opens_12_mon_prior,Num,8,11,,,
+41,1,tot_opens_24_mon_prior,Num,8,11,,,
+42,1,tot_opens_36_mon_prior,Num,8,11,,,
+43,1,tot_clicks_12_mon_prior,Num,8,11,,,
+44,1,tot_clicks_24_mon_prior,Num,8,11,,,
+45,1,tot_clicks_36_mon_prior,Num,8,11,,,
+46,1,tot_emails_36_mon_prior1,Num,8,11,"Re-coded Email Variables: 
+These are all re-coded versions of the corresponding variables where missing values have been replaced with 0 ",,
+47,1,tot_opens_36_mon_prior1,Num,8,11,,,
+48,1,tot_clicks_36_mon_prior1,Num,8,11,,,
+49,1,tot_emails_24_mon_prior1,Num,8,11,,,
+50,1,tot_opens_24_mon_prior1,Num,8,11,,,
+51,1,tot_clicks_24_mon_prior1,Num,8,11,,,
+52,1,tot_emails_12_mon_prior1,Num,8,11,,,
+53,1,tot_opens_12_mon_prior1,Num,8,11,,,
+54,1,tot_clicks_12_mon_prior1,Num,8,11,,,
+55,1,tot_emails_30_days_prior1,Num,8,11,,,
+56,1,tot_opens_30_days_prior1,Num,8,11,,,
+57,1,tot_clicks_30_days_prior1,Num,8,11,,,
+58,1,tot_emails_60_days_prior1,Num,8,11,,,
+59,1,tot_opens_60_days_prior1,Num,8,11,,,
+60,1,tot_clicks_60_days_prior1,Num,8,11,,,
+61,1,tot_emails_90_days_prior1,Num,8,11,,,
+62,1,tot_opens_90_days_prior1,Num,8,11,,,
+63,1,tot_clicks_90_days_prior1,Num,8,11,,,
+64,1,days_since_most_recent_email1,Num,8,11,,,
+65,1,days_since_most_recent_open1,Num,8,11,,,
+66,1,days_since_most_recent_click1,Num,8,11,,,
+67,1,days_email_unk,Num,8,11,Indicator = 1 if Fan never received email,,
+68,1,days_open_unk,Num,8,11,Indicator = 1 if Fan never opened email,,
+69,1,days_click_unk,Num,8,11,Indicator = 1 if Fan never clicked email,,
+70,1,ever_emailed,Num,8,6,Indicator = 1 if fan was ever emailed based on available history ,,
+71,1,source_date,Num,8,DATE9.,Earliest Date a customer appeared in the NBA db,,
+72,1,tenure,Num,8,11,Number of months a customer has been in the NBA db,,
+73,1,zip_code,Char,5,$5.00 ,,,
+74,1,post_total_ticket_amt,Num,8,,Total amt spent on tickets,"These are all response variables, measuring the Fan's ticket purchasing activity within the 12-month performance period (8/1/2016-7/31/2017)",
+75,1,post_total_tickets,Num,8,,Total tickets purchased,,
+76,1,post_avg_ticket_price,Num,8,,Avg ticket purchase price,,
+77,1,post_total_events,Num,8,20,Total games fan purchased ticket for,,
+78,1,post_regular_season_tix,Num,8,11,Indicator = 1 if Fan purchased regular-season tickets,,
+79,1,post_playoffs_tix,Num,8,11,Indicator = 1 if Fan purchased playoff tickets,,
+80,1,post_arc_flag,Num,8,11,Indicator = 1 if Fan purchased tickets from Archtics,,
+81,1,post_tmc_flag,Num,8,11,Indicator = 1 if Fan purchased tickets from TicketMaster,,
+82,1,post_tmc_resale_flag,Num,8,11,Indicator = 1 if Fan purchased tickets from TicketMaster Resale,,
+83,1,post_ticket_package_arc,Num,8,11,Indicator = 1 if Fan purchased a ticket package from Archtics,,
+84,1,post_ticket_package_derived,Num,8,11,"Derived indicator if Fan purchased a ticket package:
+ - 1 = Individual Tickets
+ - 2 = Mini pack/plan (partial)
+ - 3 = Large partial/half (partial)
+ - 4 = Full plan",,
+85,1,post_tickets_flag,Num,8,11,"This is the dependent variable we're currently using:
+if post_total_tickets > 0 then 1; else 0",,
+86,1,pre_total_ticket_amt_l12,Num,8,,"Variables measuring a Fan's ticket purchases prior to the cutoff date (8/1/2016);
+
+Varibles with the following suffix measure:
+_l12 = last 12 months
+_l24 = last 24 months
+_l36 = last 36 months
+_ever = entire history
+
+Unless otherwise indicated, variables measure activity in the prior 36 months.",,
+87,1,pre_total_tickets_l12,Num,8,,,,
+88,1,pre_total_events_l12,Num,8,20,,,
+89,1,pre_total_ticket_amt_l24,Num,8,,,,
+90,1,pre_total_tickets_l24,Num,8,,,,
+91,1,pre_total_events_l24,Num,8,20,,,
+92,1,pre_total_ticket_amt_l36,Num,8,,,,
+93,1,pre_total_tickets_l36,Num,8,,,,
+94,1,pre_total_events_l36,Num,8,20,,,
+95,1,pre_regular_season_tix,Num,8,11,,,
+96,1,pre_playoffs_tix,Num,8,11,,,
+97,1,pre_arc_flag,Num,8,11,,,
+98,1,pre_tmc_flag,Num,8,11,,,
+99,1,pre_tmc_resale_flag,Num,8,11,,,
+100,1,pre_ticket_package_arc,Num,8,11,,,
+101,1,pre_ticket_package_derived,Num,8,11,,,
+102,1,pre_non_nba_tickets_l36,Num,8,20,,,
+103,1,pre_tickets_ever,Num,8,11,,,
+104,1,pre_total_ticket_amt_l12_r,Num,8,,"Re-coded Ticket Purchase History: 
+These are all re-coded versions of the corresponding variables where missing values have been replaced with 0 ",,
+105,1,pre_total_tickets_l12_r,Num,8,,,,
+106,1,pre_total_events_l12_r,Num,8,20,,,
+107,1,pre_total_ticket_amt_l24_r,Num,8,,,,
+108,1,pre_total_tickets_l24_r,Num,8,,,,
+109,1,pre_total_events_l24_r,Num,8,20,,,
+110,1,pre_total_ticket_amt_l36_r,Num,8,,,,
+111,1,pre_total_tickets_l36_r,Num,8,,,,
+112,1,pre_total_events_l36_r,Num,8,20,,,
+113,1,pre_regular_season_tix_r,Num,8,11,,,
+114,1,pre_playoffs_tix_r,Num,8,11,,,
+115,1,pre_arc_flag_r,Num,8,11,,,
+116,1,pre_tmc_flag_r,Num,8,11,,,
+117,1,pre_tmc_resale_flag_r,Num,8,11,,,
+118,1,pre_ticket_package_arc_r,Num,8,11,,,
+119,1,pre_ticket_package_derived_r,Num,8,11,,,
+120,1,pre_non_nba_tickets_l36_r,Num,8,20,,,
+121,1,pre_tickets_ever_r,Num,8,11,,,
+122,0,closest_arena,Char,27,$27.00 ,Closest Arena to Fan,,
+123,1,closest_team,Char,22,$22.00 ,Closest Team to Fan,,
+124,1,closest_arena_distance,Num,8,,Distance to Closest Arena,,
+125,0,closest_arena_distance1,Num,8,,Re-coded to set missing values to 799,,
+126,0,arena_dist_unk,Num,8,11,Indicator = 1 if arena_distance is unknown,,
+127,0,closest_arena_75,Num,8,6,Closest Arena within 75 miles,,
+128,0,closest_arena_150,Num,8,6,Closest Arena within 150 miles,,
+129,0,zip_team,Char,100,$100.00 ,Fan's NBA Market Team ,,
+130,0,zip_arena,Char,100,$100.00 ,Fan's NBA Market Arena,,
+131,0,zip_closest_arena,Char,8,$8.00 ,,,
+132,0,age,Num,8,6,Fan age (derived from DOB),,
+133,1,age2,Num,8,11,Re-coded with default values,,
+134,0,age_unk1,Num,8,11,Indicator = 1 if age is unknown,,
+135,1,gender,Char,1,$1.00 ,Fan Gender (M/F/U),,
+136,0,female1,Num,8,11,indicator if female based on internal data only,,
+137,0,male1,Num,8,11,indicator if male based on internal data only,,
+138,0,gender_unk1,Num,8,11,indicator if gender unknown based on internal data only,,
+139,0,opt_out_unsub,Num,8,6,,,
+140,0,opt_out_merge,Num,8,6,,,
+141,0,email_domain,Char,120,$120.00 ,,,
+142,0,fan_total_amt_l3,Num,8,,"Fanatics Data:
+This indicates if a Fan has ever purchased merhcandise from the NBA Store (amount, items, orders).
+
+Varibles with the following suffix measure:
+_l12 = last 12 months
+_l24 = last 24 months
+_l36 = last 36 months
+_ever = entire history",,
+143,0,fan_total_amt_l6,Num,8,,,,
+144,0,fan_total_amt_l12,Num,8,,,,
+145,0,fan_total_amt_l24,Num,8,,,,
+146,1,fan_total_amt_l36,Num,8,,,,
+147,0,fan_total_items_l3,Num,8,,,,
+148,0,fan_total_items_l6,Num,8,,,,
+149,0,fan_total_items_l12,Num,8,,,,
+150,0,fan_total_items_l36,Num,8,,,,
+151,0,fan_total_orders_l3,Num,8,20,,,
+152,0,fan_total_orders_l6,Num,8,20,,,
+153,0,fan_total_orders_l12,Num,8,20,,,
+154,0,fan_total_orders_l24,Num,8,20,,,
+155,1,fan_total_orders_l36,Num,8,20,,,
+156,0,fan_total_promos_l3,Num,8,20,,,
+157,0,fan_total_promos_l6,Num,8,20,,,
+158,0,fan_total_promos_l12,Num,8,20,,,
+159,0,fan_total_promos_l24,Num,8,20,,,
+160,1,fan_total_promos_l36,Num,8,20,,,
+161,1,fan_amt_any,Num,8,11,,,
+162,1,fan_items_any,Num,8,11,,,
+163,1,fan_orders_any,Num,8,11,,,
+164,1,domain_gmail,Num,8,11,Indicates if a Fan has an email address with the indicated domain name,,
+165,1,domain_hotmail,Num,8,11,,,
+166,1,domain_yahoo,Num,8,11,,,
+167,1,domain_aol,Num,8,11,,,
+168,1,domain_outlook,Num,8,11,,,
+169,1,domain_icloud,Num,8,11,,,
+170,1,domain_msn,Num,8,11,,,
+171,1,domain_edu,Num,8,11,,,
+172,1,domain_net,Num,8,11,,,
+173,1,domain_org,Num,8,11,,,
+174,1,domain_gov,Num,8,11,,,
+175,1,domain_us,Num,8,11,,,
+176,0,samplenb,Char,2,$2.00 ,,,
+177,0,sampleb,Char,1,$1.00 ,,,
+178,0,male,Num,8,11,Indicator if male based on internal + LA data,,
+179,0,female,Num,8,11,Indicator if female based on internal + LA data,,
+180,0,gender_unk,Num,8,11,Indicator if gender unknown based on internal + LA data,,
+181,0,age1,Num,8,11,Age based on internal + LA Data,,
+182,0,age_unk,Num,8,11,Indicator = 1 if age unknown (based on internal + LA data),,
+183,,live_analytics_id,Num,8,11,LiveAnalytics ID if a Fan has a matching LA record,"TicketMaster LiveAnalytics Variables
+These are primarily demographic variables from Acxiom
+
+These are only available for a subset of the population
+
+We're not using these in the current version of the model, but including them just for exploratory purposes",NEXT VERSION
+184,,la_dim_01_ind,Num,8,6,Millenials: Birth year 1981-2000 (based on age from Acxiom),,
+185,,la_dim_02_ind,Num,8,6,Gen X: Birth year 1965-1980 (based on age from Acxiom),,
+186,,la_dim_03_ind,Num,8,6,Baby Boomers: Birth year 1946-1964 (based on age from Acxiom),,
+187,,la_dim_11_ind,Num,8,6,Affluence Indicator,,
+188,,la_adult_hh_num,Num,8,6,Number of Adults in HH,,
+189,,la_age_two_yr_incr_input_indv,Num,8,6,Age in 2-Year Increments ,,
+190,,la_bank_card_hldr_cd,Num,8,6,Bank card indicator,,
+191,,la_credit_card_unk_type_hld_cd,Num,8,6,Credit card indicator,,
+192,,la_discretionary_income_index_cd,Num,8,6,Discretionary Income Index (0-5000),,
+193,,la_dwlng_type_cd,Char,1,$1.00 ,"Dwelling Type:
+M = Multiple Family
+S = Single Family",,
+194,,la_e3_pmt_amex_ind,Num,8,6,Amex Card Holder,,
+195,,la_e3_pmt_mc_ind,Num,8,6,Mastercard Card Holder,,
+196,,la_e3_pmt_visa_ind,Num,8,6,Visa Card Holder,,
+197,,la_edu_input_indv_cd,Num,8,6,"Education - Input Individual:
+1 = (Completed) High School
+2 = (Completed) College
+3 = (Completed) Graduate School
+4 = (Attended) Vocational/Technical",,
+198,,la_est_hh_inc_cd_100pct_inc_cd,Num,8,6,"Estimated Annual HH Income - 100%:
+1 = Less than $15,000
+2 = $15,000 - $19,999
+3 = $20,000 - $29,999
+4 = $30,000 - $39,999
+5 = $40,000 - $49,999
+6 = $50,000 - $74,999
+7 = $75,000 - $99,999
+8 = $100,000 - $124,999
+9 = Greater than $124,999",,
+199,,la_est_hh_inc_cd_100pct_prec_cd,Char,1,$1.00 ,"Estimated Annual HH Income - 100% (Match Level):
+3 = Household Level (High)
+4 = Household Inferred Level
+A = Zip+4 Level (Med 16-20 homes)
+G = Zip Level (Low 2,200 homes)",,
+200,,la_est_hh_inc_higher_ranges_cd,Char,1,$1.00 ,"Indicates the estimated household income in higher ranges:
+1 = Under $10,000
+2 = $10,000 - $14,999
+3 = $15,000 - $19,999
+4 = $20,000 - $24,999
+5 = $25,000 - $29,999
+6 = $30,000 - $34,999
+7 = $35,000 - $39,999
+8 = $40,000 - $44,999
+9 = $45,000 - $49,999
+A = $50,000 - $54,999
+B = $55,000 - $59,999
+C = $60,000 - $64,999
+D = $65,000 - $74,999
+E = $75,000 - $99,999
+F = $100,000 - $149,999
+G = $150,000 - $174,999
+H = $175,000 - $199,999
+I = $200,000 - $249,999
+J = $250,000 +",,
+201,,la_est_hh_inc_narrow_ranges_cd,Char,1,$1.00 ,"Indicates the estimated household income in narrow ranges:
+1 = Less than $15,000
+2 = $15,000 - $19,999
+3 = $20,000 - $29,999
+4 = $30,000 - $39,999
+5 = $40,000 - $49,999
+6 = $50,000 - $59,999
+7 = $60,000 - $69,999
+8 = $70,000 - $79,999
+9 = $80,000 - $89,999
+A = $90,000 - $99,999
+B = $100,000 - $124,999
+C = $125,000 - $149,999
+D = Greater than $149,999",,
+202,,la_financial_pct_score,Num,8,6,Financial Composite Score (0-1000),,
+203,,la_gas_dept_retail_card_hldr_cd,Num,8,6,Gas/Dept Store/Retail Card Holder,,
+204,,la_gndr_input_indv_cd,Char,1,$1.00 ,Gender,,
+205,,la_hh_female_11_15_ind,Num,8,6,Female 11-15 in HH,,
+206,,la_hh_female_16_17_ind,Num,8,6,Female 16-17 in HH,,
+207,,la_hh_female_18_24_ind,Num,8,6,Female 18-24 in HH,,
+208,,la_hh_female_25_34_ind,Num,8,6,Female 25-34 in HH,,
+209,,la_hh_female_35_44_ind,Num,8,6,Female 35-44 in HH,,
+210,,la_hh_female_45_54_ind,Num,8,6,Female 45-54 in HH,,
+211,,la_hh_female_55_64_ind,Num,8,6,Female 55-64 in HH,,
+212,,la_hh_female_65_74_ind,Num,8,6,Female 65-74 in HH,,
+213,,la_hh_female_75_plus_ind,Num,8,6,Female 75+ in HH,,
+214,,la_hh_male_11_15_ind,Num,8,6,Male 11-15 in HH,,
+215,,la_hh_male_16_17_ind,Num,8,6,Male 16-17 in HH,,
+216,,la_hh_male_18_24_ind,Num,8,6,Male 18-24 in HH,,
+217,,la_hh_male_25_34_ind,Num,8,6,Male 25-34 in HH,,
+218,,la_hh_male_35_44_ind,Num,8,6,Male 35-44 in HH,,
+219,,la_hh_male_45_54_ind,Num,8,6,Male 45-54 in HH,,
+220,,la_hh_male_55_64_ind,Num,8,6,Male 55-64 in HH,,
+221,,la_hh_male_65_74_ind,Num,8,6,Male 65-74 in HH,,
+222,,la_hh_male_75_plus_ind,Num,8,6,Male 75+ in HH,,
+223,,la_hh_unk_11_15_ind,Num,8,6,Unknown 11-15 in HH,,
+224,,la_hh_unk_16_17_ind,Num,8,6,Unknown 16-17 in HH,,
+225,,la_income_est_hh_cd,Num,8,6,"Income - Estimated Household:
+1 = Less than $15,000
+2 = $15,000 - $19,999
+3 = $20,000 - $29,999
+4 = $30,000 - $39,999
+5 = $40,000 - $49,999
+6 = $50,000 - $74,999
+7 = $75,000 - $99,999
+8 = $100,000 - $124,999
+9 = Greater than $124,999",,
+226,,la_int_music_grp_cd,Num,8,6,Movie / Music Grouping,,
+227,,la_int_sports_grp_cd,Num,8,6,Sports Grouping,,
+228,,la_int_travel_domestic_cd,Num,8,6,Travel - Domestic,,
+229,,la_len_of_resdnc_cd,Num,8,6,"Length of Residence:
+00 = 00 (Less than 1 year)
+01 = 01
+02 = 02
+03 = 03
+04 = 04
+05 = 05
+06 = 06
+07 = 07
+08 = 08
+09 = 09
+10 = 10
+11 = 11
+12 = 12
+13 = 13
+14 = 14
+15 = 15 (Greater than 14 Years)",,
+230,,la_livea_match_cd,Char,1,$1.00 ,"LiveAnalytics Matching Code:
+A= Acxiom Abilitec match 
+E=Email match 
+N=No match (may still have matched to Acxiom)
+H=Record sourced from TM db",,
+231,,la_mail_ord_buyer_cd,Char,1,$1.00 ,Mail Order Buyer,,
+232,,la_mail_ord_respndr_cd,Char,1,$1.00 ,Mail Order Responder,,
+233,,la_marital_status_hh_cd,Char,1,$1.00 ,"Marital Status in the HH:
+M = Married
+S = Single
+A = Inferred Married
+B = Inferred Single",,
+234,,la_net_worth_gold_cd,Char,1,$1.00 ,"Net Worth:
+1 = Less than $1
+2 = $1 - $4,999
+3 = $5,000 - $9,999
+4 = $10,000 - $24,999
+5 = $25,000 - $49,999
+6 = $50,000 - $99,999
+7 = $100,000 - $249,999
+8 = $250,000 - $499,999
+9 = $500,000 - $999,999
+A = $1,000,000 - $1,999,999
+B = Greater than $1,999,999",,
+235,,la_prem_card_hldr_cd,Num,8,6,Premium Credit Card Holder,,
+236,,la_psx_classic_clus_cd,Num,8,6,PersonicX Classic Cluster,,
+237,,la_psx_classic_prec_lvl_cd,Char,1,$1.00 ,PersonicX Precision Level,,
+238,,la_psx_group_id,Num,8,6,PersonicX LifeStage Group,,
+239,,la_race_cd,Char,1,$1.00 ,"Race:
+A = Asian
+B = Black
+H = Hispanic
+W = White (or Other)",,
+240,,la_travel_ent_card_hldr_cd,Num,8,6,Travel/Entertainment Card Holder,,
+241,,la_upscale_dept_str_card_hldr_cd,Num,8,6,Upscale Department Store Card Holder,,
+242,,la_veh_truck_owner_cd,Num,8,6,Truck Owner,,
+243,,la_wrk_wmn_hh_flg,Char,1,$1.00 ,Working Woman in Household,,
