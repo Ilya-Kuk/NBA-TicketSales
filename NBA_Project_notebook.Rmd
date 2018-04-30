@@ -4,27 +4,57 @@ author: "Ilya Kukovitskiy"
 date: "April 30, 2018"
 output: html_document
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r,echo=FALSE}
+set.seed(1)
+library(tree)
+library(ISLR)
+library(MASS)
+library(randomForest)
+library(gbm)
+#library(plotly)
 ```
 
-## R Markdown
+**Data Preprocessing**
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+Reading in and storing dataset from file
+```{r}
+nbatkts=read.csv("nbaTKTS4teams0412_sample.csv",header=T, sep=",")
+nbatktsdf=data.frame(nbatkts)
+dataset <- nbatktsdf
+```
+```{r, echo=FALSE}
+#clearing environment space
+rm(nbatktsdf,nbatkts)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Removing unwanted variables, as per REVISED Data Dictionary - age is now ignored, age2 is included
+```{r}
+data_dictionary <- read.csv("Copy_of_Ticket_Development_Sample_Data_Dictionary2_Copy.csv", header=TRUE, sep=",")
+select.Variable <- data_dictionary[,c(2,3)] #matrix of two rows, the first is 1 if selected 0 otherwise, the second is the name of the variable
+variables_used <- select.Variable[select.Variable[,1]==1,] #taking only the variables selected in the data dictionary
+variables_used <- na.omit(variables_used)
+variables_used <- variables_used[,2]
+variables_used <- variables_used[-c(3,4,5,6,7,8,9,10,11,59)] #Removing tenure variables, as requested
+variables_used <- variables_used[-c(6:23,81:98)] #Removing re-coded variables (SECOND PART WAS 63:80, the data dictionary is not consistent with dataset)
+variables_used <- as.character(variables_used) #making a vector of names as opposed to a factor with many levels
+#Creating new dataset using only the useful variables, as per Data Dictionary
+Not_Variables <- c()
+Are_Variables <- c()
+all_variables <- colnames(dataset)
+first_col <- rep(NA, times=nrow(dataset))
+new_dataset <- data.frame(first_col) #initializing dataframe with null values, to be removed later
+for(i in 1:length(variables_used)){  #adding column to new dataset if select==1, and recording the variables used and the variables in data dictionary that aren't in dataset
+  V <- variables_used[i]
+  J <- match(V,all_variables)
+  ifelse(
+    is.na(J),
+    Not_Variables <- c(Not_Variables,V),
+    new_dataset <- cbind(new_dataset,dataset[,J])
+  )
+  if(is.na(J)==FALSE) Are_Variables <- c(Are_Variables,V)
+}
+new_dataset <- new_dataset[,-1] #removing first (null) column
+if(ncol(new_dataset)==length(Are_Variables)) colnames(new_dataset) <- Are_Variables #adjusting column names
+rm(data_dictionary,dataset,select.Variable,all_variables,Are_Variables,Not_Variables,i,J,V,variables_used,first_col) #cleaning up environment space
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
