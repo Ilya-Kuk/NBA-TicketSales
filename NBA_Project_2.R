@@ -1,6 +1,6 @@
 d <- read.csv("NBAsample2Groups.csv",header=T, sep=",")
 a <- colnames(d)
-View(a)
+a
 AX <- grepl("ax_",a) #seeing which values have prefix ax_
 AXN <- c() #creating temporary vector recording positions
 for(i in 1:length(a)){ #getting rejected values
@@ -8,11 +8,11 @@ for(i in 1:length(a)){ #getting rejected values
     AXN <- c(AXN,i)
   }
 }
-AXN #looks good
+AXN
 d <- d[,-AXN] #removing rejected values
 a <- colnames(d)
 a
-grepl("ax_",a)
+grepl("ax_",a) #no ax_ variables
 LA <- grepl("la_",a)
 LAN <- c() #creating temporary vector recording positions
 for(i in 1:length(a)){ #getting rejected values
@@ -20,8 +20,9 @@ for(i in 1:length(a)){ #getting rejected values
     LAN <- c(LAN,i)
   }
 }
-LAN #looks good
+LAN
 d <- d[,-LAN] #removing rejected values
 a <- colnames(d)
 a
+grepl("la_",a) #no la_ variables
 
