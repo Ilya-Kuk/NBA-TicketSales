@@ -117,7 +117,8 @@ print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
 print("A bit worse... What makes a good mtry argument? What about ntree? Use lab chapter 8 first question.")
 
 #Creating Boosted Tree
-boost.ptf_train <- gbm(post_tickets_flag~., dataset.ptf[train], distribution='gaussian', n.trees=5000, interaction.depth=4)
+#I think this was done wrong...
+boost.ptf_train <- gbm(post_tickets_flag~., dataset.ptf[train,], distribution='gaussian', n.trees=5000, interaction.depth=4)
 boost.ptf_pred <- predict(boost.ptf_train, dataset.ptf[-train,], type='class')
 M_boost <- table(boost.ptf_pred, post_tickets_flag[-train])
 M_boost

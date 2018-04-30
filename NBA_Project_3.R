@@ -1,6 +1,19 @@
-d <- read.csv("nbasample2GrpPlus0429.csv",header=T, sep=",")
+## Importing Packages and Setting Seed
+
+#install.packages("tree")
+require(tree)
+#install.packages('randomForest')
+library(randomForest)
+#install.packages("gbm",repos='http://cran.us.r-project.org')
+library(gbm)
+
+set.seed(1)
 
 ## Data Preprocessing
+
+#Reading in and storing dataset 'd' from file
+d <- read.csv("nbasample2GrpPlus0429.csv",header=T, sep=",")
+
 
 #Removing ax_ and la_ variables, as requested
 
@@ -131,16 +144,17 @@ cv.ptf_train <- cv.tree(tree.ptf_train, FUN=prune.misclass)
 cv.ptf_train
 b <- which.min(cv.ptf_train$dev)
 print(paste("The best trees seem to be of size",cv.ptf_train$size[b],"with cross-validation error of",cv.ptf_train$dev[b],"."))
-prune.ptf_train <- prune.misclass(tree.ptf_train, best=6)
+prune.ptf_train <- prune.misclass(tree.ptf_train, best=11)
 plot(prune.ptf_train)
 text(prune.ptf_train,pretty=0)
 prune.ptf_pred <- predict(prune.ptf_train, dataset.ptf[-train,], type="class")
 M_prune <- table(prune.ptf_pred, post_tickets_flag[-train])
 M_prune
 print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
-print("A bit better...")
+print("Same error rate.")
 
 #Creating Bagged Tree
+#Creating a modified dataset - na values are not accepted in bagged trees
 dataset.ptf0 <- dataset.ptf
 dataset.ptf0[is.na(dataset.ptf0)] <- 0
 attach(dataset.ptf0)
@@ -149,7 +163,7 @@ bag.ptf_pred <- predict(bag.ptf_train, dataset.ptf0[-train,], type="class")
 M_bag <- table(bag.ptf_pred, post_tickets_flag[-train])
 M_bag
 print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
-print("Better yet.")
+print("Better!")
 
 #Creating Random Forest
 RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=train, importance=TRUE)
@@ -157,13 +171,18 @@ RF.ptf_pred <- predict(RF.ptf_train, dataset.ptf0[-train,], type="class")
 M_RF <- table(RF.ptf_pred, post_tickets_flag[-train])
 M_RF
 print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
-print("A bit worse... What makes a good mtry argument? What about ntree? Use lab chapter 8 first question.")
+print("More than 90% accurate!")
 
-#NOT WORKING
 #Creating Boosted Tree
 attach(dataset.ptf)
-boost.ptf_train <- gbm(post_tickets_flag~., dataset.ptf[train], distribution='gaussian', n.trees=5000, interaction.depth=4)
-boost.ptf_pred <- predict(boost.ptf_train, dataset.ptf[-train,], type='class')
+#Creating a modified dataset - columns with no variation are not accepted in boosted trees
+dataset.ptfB <- dataset.ptf
+colnames(dataset.ptfB)[c(36,56)]
+dataset.ptfB <- dataset.ptfB[,-c(36,56)]
+attach(dataset.ptfB)
+#distribution='bernoulli' requires 0,1 variable
+boost.ptf_train <- gbm(post_tickets_flag~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=5000, interaction.depth=4)
+boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], type='class', n.trees=5000)
 M_boost <- table(boost.ptf_pred, post_tickets_flag[-train])
 M_boost
 print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
