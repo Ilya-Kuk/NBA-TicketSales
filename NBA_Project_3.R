@@ -173,6 +173,52 @@ M_RF
 print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
 print("More than 90% accurate!")
 
+#Creating Various Random FOrests
+#Initializing matrix of variables sampled, tree count, and test MSE
+Analysis <- matrix(
+  c("","",""),
+  nrow=1,
+  ncol=3)
+colnames(Analysis) <- c("nVariables","nTrees","MSE")
+#Initializing matrix of test MSE for heatmap, rowname, and colname vectors
+Z <- matrix(
+  nrow=13,
+  ncol=12
+)
+rownames(Z) <- c(200,250,300,350,400,450,500,550,600,650,700,750,800)
+colnames(Z) <- c(10,20,30,40,50,60,70,80,90,100,110)
+r_z <- c()
+c_z <- c()
+#Defining and recording how many variables sampled
+for(v in 1:11){
+  V <- v*10
+  #Building colname vector
+  c_z <- c(c_z,V)
+  #Defining and recording how many trees grown
+  for(n in 1:13){
+    N <- 50*(n+3)
+    #Building rowname vector
+    if(v==1)r_z <- c(r_z,N)
+    #Growing Random Forest
+    RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=train, importance=TRUE)
+    #checking and recording MSE on test set
+    rf_pred <- predict(rf.boston, newdata=Boston[-train,])
+    E <- mean((rf_pred - boston_test)^2)
+    #Inputting values wanted for analysis of random forests into Matrix
+    Analysis <- rbind(Analysis,c(V,N,E))
+    #Inputting value wanted for heatmap into Matrix
+    Z[n,v] <- E
+  }
+}
+#Removing first (empty) row of Matrix
+Analysis <- Analysis[-1,]
+print("Top 10 random forests based on MSE:")
+#Ordering Matrix based on error rate
+Analysis <- Analysis[ order(Analysis[,3],decreasing=FALSE), ]
+Analysis[1:10,]
+
+
+
 #Creating Boosted Tree
 attach(dataset.ptf)
 #Creating a modified dataset - columns with no variation are not accepted in boosted trees
