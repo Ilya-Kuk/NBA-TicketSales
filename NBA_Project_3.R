@@ -13,7 +13,9 @@ set.seed(1)
 
 #Reading in and storing dataset 'd' from file
 d <- read.csv("nbasample2GrpPlus0429.csv",header=T, sep=",")
-
+#attach(d)
+#post_tickets_flag
+d <- d[1:1000,]
 
 #Removing ax_ and la_ variables, as requested
 
@@ -125,7 +127,7 @@ a.ptf[R]
 dataset.ptf[,R] <- Ticket
 dataset.ptf[,R] <- factor(dataset.ptf[,R])
 attach(dataset.ptf)
-rm(y,Ticket) #cleaning up environment space
+rm(Ticket) #cleaning up environment space
 
 #Growing Preliminary Classification Tree
 tree.ptf <- tree(post_tickets_flag~., dataset.ptf)
@@ -165,6 +167,18 @@ M_bag
 print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
 print("Better!")
 
+importance(bag.ptf_train)
+#######
+plot(bag.ptf_train)
+#######
+layout(matrix(c(1,2),nrow=1), width=c(4,1)) 
+par(mar=c(5,4,4,0)) #No margin on the right side
+plot(bag.ptf_train)
+par(mar=c(5,0,4,2)) #No margin on the left side
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("top", colnames(bag.ptf_train$err.rate),col=1:4,cex=0.8,fill=1:4)
+
+
 #Creating Random Forest
 RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=train, importance=TRUE)
 RF.ptf_pred <- predict(RF.ptf_train, dataset.ptf0[-train,], type="class")
@@ -173,48 +187,33 @@ M_RF
 print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
 print("More than 90% accurate!")
 
-#Creating Various Random FOrests
+
+importance(RF.ptf_train)
+#Plotting Random Forest to determine best ntrees argument
+plot(RF.ptf_train)
+
+
+#Creating Various Random Forests
 #Initializing matrix of variables sampled, tree count, and test MSE
 Analysis <- matrix(
-  c("","",""),
+  c("",""),
   nrow=1,
-  ncol=3)
-colnames(Analysis) <- c("nVariables","nTrees","MSE")
-#Initializing matrix of test MSE for heatmap, rowname, and colname vectors
-Z <- matrix(
-  nrow=13,
-  ncol=12
-)
-rownames(Z) <- c(200,250,300,350,400,450,500,550,600,650,700,750,800)
-colnames(Z) <- c(10,20,30,40,50,60,70,80,90,100,110)
-r_z <- c()
-c_z <- c()
-#Defining and recording how many variables sampled
-for(v in 1:11){
-  V <- v*10
-  #Building colname vector
-  c_z <- c(c_z,V)
-  #Defining and recording how many trees grown
-  for(n in 1:13){
-    N <- 50*(n+3)
-    #Building rowname vector
-    if(v==1)r_z <- c(r_z,N)
-    #Growing Random Forest
-    RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=train, importance=TRUE)
-    #checking and recording MSE on test set
-    rf_pred <- predict(rf.boston, newdata=Boston[-train,])
-    E <- mean((rf_pred - boston_test)^2)
-    #Inputting values wanted for analysis of random forests into Matrix
-    Analysis <- rbind(Analysis,c(V,N,E))
-    #Inputting value wanted for heatmap into Matrix
-    Z[n,v] <- E
-  }
+  ncol=2)
+colnames(Analysis) <- c("nVariables","MSE")
+#######
+for(i in 1:((ncol(dataset.ptf)-1)/2)){
+  M <- 2*i
+  RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=train, importance=TRUE)
+  RF.ptf_pred <- predict(RF.ptf_train, dataset.ptf0[-train,], type="class")
+  M_RF <- table(RF.ptf_pred, post_tickets_flag[-train])
+  E <- ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))
+  Analysis <- rbind(Analysis, c(M,E))
 }
 #Removing first (empty) row of Matrix
 Analysis <- Analysis[-1,]
 print("Top 10 random forests based on MSE:")
 #Ordering Matrix based on error rate
-Analysis <- Analysis[ order(Analysis[,3],decreasing=FALSE), ]
+Analysis <- Analysis[ order(Analysis[,2],decreasing=FALSE), ]
 Analysis[1:10,]
 
 
@@ -226,6 +225,8 @@ dataset.ptfB <- dataset.ptf
 colnames(dataset.ptfB)[c(36,56)]
 dataset.ptfB <- dataset.ptfB[,-c(36,56)]
 attach(dataset.ptfB)
+#Modify response variable
+dataset.ptfB$post_tickets_flag <- y
 #distribution='bernoulli' requires 0,1 variable
 boost.ptf_train <- gbm(post_tickets_flag~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=5000, interaction.depth=4)
 boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], type='class', n.trees=5000)
