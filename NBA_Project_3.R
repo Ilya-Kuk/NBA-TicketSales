@@ -284,7 +284,7 @@ cv.ptt_train <- cv.tree(tree.ptt_train, FUN=prune.misclass)
 cv.ptt_train
 b <- which.min(cv.ptt_train$dev)
 print(paste("The best trees seem to be of size",cv.ptt_train$size[b],"with deviation of",cv.ptt_train$dev[b],"."))
-prune.ptt_train <- prune.misclass(tree.ptt_train, best=11)
+prune.ptt_train <- prune.tree(tree.ptt_train, best=11)
 plot(prune.ptt_train)
 text(prune.ptt_train,pretty=0)
 prune.ptt_pred <- predict(prune.ptt_train, dataset.ptt[-train,])

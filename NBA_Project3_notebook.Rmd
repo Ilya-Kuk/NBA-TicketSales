@@ -241,8 +241,8 @@ attach(dataset.ptfB)
 #Modify response variable
 dataset.ptfB$post_tickets_flag <- y
 #distribution='bernoulli' requires 0,1 variable
-boost.ptf_train <- gbm(post_tickets_flag~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=5000, interaction.depth=4)
-boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], type='class', n.trees=5000)
+boost.ptf_train <- gbm(post_tickets_flag~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=1000, interaction.depth=4)
+boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], n.trees=1000)
 M_boost <- table(boost.ptf_pred, post_tickets_flag[-train])
 M_boost
 print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
@@ -286,11 +286,11 @@ print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating th
 
 Pruning the Tree
 ```{r}
-cv.ptt_train <- cv.tree(tree.ptt_train, FUN=prune.misclass)
+cv.ptt_train <- cv.tree(tree.ptt_train, FUN=prune.tree)
 cv.ptt_train
 b <- which.min(cv.ptt_train$dev)
 print(paste("The best trees seem to be of size",cv.ptt_train$size[b],"with deviation of",cv.ptt_train$dev[b],"."))
-prune.ptt_train <- prune.misclass(tree.ptt_train, best=11)
+prune.ptt_train <- prune.tree(tree.ptt_train, best=11)
 plot(prune.ptt_train)
 text(prune.ptt_train,pretty=0)
 prune.ptt_pred <- predict(prune.ptt_train, dataset.ptt[-train,])
@@ -356,8 +356,8 @@ dataset.pttB <- dataset.ptt
 colnames(dataset.pttB)[c(36,56)]
 dataset.pttB <- dataset.pttB[,-c(36,56)]
 attach(dataset.pttB)
-boost.ptt_train <- gbm(post_total_tickets~., data=dataset.pttB[train,], distribution='gaussian', n.trees=5000, interaction.depth=4)
-boost.ptt_pred <- predict(boost.ptt_train, dataset.pttB[-train,], n.trees=5000)
+boost.ptt_train <- gbm(post_total_tickets~., data=dataset.pttB[train,], distribution='gaussian', n.trees=1000, interaction.depth=4)
+boost.ptt_pred <- predict(boost.ptt_train, dataset.pttB[-train,], n.trees=1000)
 plot(boost.ptt_pred, post_total_tickets[-train])
 abline(0,1)
 MSE.boost.ptt <- mean((boost.ptt_pred-post_total_tickets[-train])^2)
@@ -404,11 +404,11 @@ print(paste("Test MSE is",MSE.ptta,". Root MSE is",sqrt(MSE.ptta),", indicating 
 
 Pruning the Tree
 ```{r}
-cv.ptta_train <- cv.tree(tree.ptta_train, FUN=prune.misclass)
+cv.ptta_train <- cv.tree(tree.ptta_train, FUN=prune.tree)
 cv.ptta_train
 b <- which.min(cv.ptta_train$dev)
 print(paste("The best trees seem to be of size",cv.ptta_train$size[b],"with deviation of",cv.ptta_train$dev[b],"."))
-prune.ptta_train <- prune.misclass(tree.ptta_train, best=11)
+prune.ptta_train <- prune.tree(tree.ptta_train, best=11)
 plot(prune.ptta_train)
 text(prune.ptta_train,pretty=0)
 prune.ptta_pred <- predict(prune.ptta_train, dataset.ptta[-train,])
@@ -474,8 +474,8 @@ dataset.pttaB <- dataset.ptta
 colnames(dataset.pttaB)[c(36,56)]
 dataset.pttaB <- dataset.pttaB[,-c(36,56)]
 attach(dataset.pttaB)
-boost.ptta_train <- gbm(post_total_ticket_amt~., data=dataset.pttaB[train,], distribution='gaussian', n.trees=5000, interaction.depth=4)
-boost.ptta_pred <- predict(boost.ptta_train, dataset.pttaB[-train,], n.trees=5000)
+boost.ptta_train <- gbm(post_total_ticket_amt~., data=dataset.pttaB[train,], distribution='gaussian', n.trees=1000, interaction.depth=4)
+boost.ptta_pred <- predict(boost.ptta_train, dataset.pttaB[-train,], n.trees=1000)
 plot(boost.ptta_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.boost.ptta <- mean((boost.ptta_pred-post_total_ticket_amt[-train])^2)
