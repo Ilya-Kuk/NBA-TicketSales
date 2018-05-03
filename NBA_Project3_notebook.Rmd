@@ -9,7 +9,6 @@ set.seed(1)
 library(tree)
 library(randomForest)
 library(gbm)
-#library(plotly)
 ```
 
 **Data Preprocessing**
@@ -22,7 +21,6 @@ d <- read.csv("nbasample2GrpPlus0429.csv",header=T, sep=",")
 Removing ax_ and la_ variales, as requested
 ```{r}
 a <- colnames(d)
-a
 AX <- grepl("ax_",a) #seeing which values have prefix ax_
 AXN <- c() #creating temporary vector recording positions
 for(i in 1:length(a)){ #getting rejected values
@@ -30,11 +28,8 @@ for(i in 1:length(a)){ #getting rejected values
     AXN <- c(AXN,i)
   }
 }
-AXN
 d <- d[,-AXN] #removing rejected values
 a <- colnames(d)
-a #no ax_ variables
-grepl("ax_",a)
 LA <- grepl("la_",a)
 LAN <- c() #creating temporary vector recording positions
 for(i in 1:length(a)){ #getting rejected values
@@ -42,11 +37,8 @@ for(i in 1:length(a)){ #getting rejected values
     LAN <- c(LAN,i)
   }
 }
-LAN
 d <- d[,-LAN] #removing rejected values
 a <- colnames(d)
-a
-grepl("la_",a) #no la_ variables
 #Cleaning up Environment
 rm(AX,AXN,LA,LAN)
 ```
@@ -55,31 +47,31 @@ Removing other Variables
 ```{r}
 #closest_arena and closest_team are identical - removing closest_arena
 x <- match("closest_arena",a)
-x
+#x
 d <- d[,-x]
 a <- colnames(d)
-match("closest_arena",a) #successfully removed
+#match("closest_arena",a) #successfully removed
 
-names(Filter(is.factor, d))#tree() can only handle 32 levels on factor predictors
+#names(Filter(is.factor, d)) #taking a look at which variables have factors - tree() can only handle 32 levels on factor predictors
 
 #zip_team and zip_arena have 56 levels - too many to grow trees on - removing both
 x <- match(c("zip_team","zip_arena"),a)
-x
+#x
 d <- d[,-x]
 a <- colnames(d)
-match(c("zip_team","zip_arena"),a) #successfully removed
+#match(c("zip_team","zip_arena"),a) #successfully removed
 #email_domain has 1468 levels - too many.. -removing
 x <- match(c("email_domain"),a)
-x
+#x
 d <- d[,-x]
 a <- colnames(d)
-match(c("email_domain"),a) #successfully removed
+#match(c("email_domain"),a) #successfully removed
 #source_date has 3773 levels - too many.. -removing
 x <- match(c("source_date"),a)
-x
+#x
 d <- d[,-x]
 a <- colnames(d)
-match(c("source_date"),a) #successfully removed
+#match(c("source_date"),a) #successfully removed
 ```
 
 **Making a training/test set vector**
@@ -99,7 +91,7 @@ for(i in 1:length(a)){ #getting rejected values
     POSTN <- c(POSTN,i)
   }
 }
-POSTN
+#POSTN
 a[POSTN]
 ```
 
@@ -123,9 +115,11 @@ Removing other response variables besides post_tickets_flag
 Q <- match('post_tickets_flag',a)
 a[Q]
 POSTN_ptf <- POSTN[! POSTN %in% Q]
-POSTN_ptf
+#POSTN_ptf
 a[POSTN_ptf]
 dataset.ptf <- d[,-POSTN_ptf]
+```
+```{r,echo=FALSE}
 attach(dataset.ptf)
 ```
 
@@ -144,11 +138,15 @@ a.ptf[R]
 #Converting it to a yes/no factor
 y <- post_tickets_flag
 Ticket <- ifelse(y<0.5,"No","Yes")
-a.ptf[R]
 dataset.ptf[,R] <- Ticket
 dataset.ptf[,R] <- factor(dataset.ptf[,R])
+```
+```{r,echo=FALSE}
 attach(dataset.ptf)
-rm(Ticket) #cleaning up environment space (keeping y as is for creaing boosted tree)
+```
+```{r}
+#Cleaning up environment space (keeping y as is for creaing boosted tree)
+rm(Ticket) 
 ```
 
 Growing Preliminary Classification Tree
@@ -174,8 +172,9 @@ Pruning the Tree
 cv.ptf_train <- cv.tree(tree.ptf_train, FUN=prune.misclass)
 cv.ptf_train
 b <- which.min(cv.ptf_train$dev)
-print(paste("The best trees seem to be of size",cv.ptf_train$size[b],"with cross-validation error of",cv.ptf_train$dev[b],"."))
-prune.ptf_train <- prune.misclass(tree.ptf_train, best=11)
+Best <- cv.ptf_train$size[b]
+print(paste("The best trees seem to be of size",cv.ptf_train$size[b],"with cross-validation error of",cv.ptf_train$dev[b]))
+prune.ptf_train <- prune.misclass(tree.ptf_train, best=Best)
 plot(prune.ptf_train)
 text(prune.ptf_train,pretty=0)
 prune.ptf_pred <- predict(prune.ptf_train, dataset.ptf[-train,], type="class")
@@ -190,7 +189,11 @@ Creating Bagged Tree
 #Creating a modified dataset - na values are not accepted in bagged trees
 dataset.ptf0 <- dataset.ptf
 dataset.ptf0[is.na(dataset.ptf0)] <- 0
+```
+```{r,echo=FALSE}
 attach(dataset.ptf0)
+```
+```{r}
 bag.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=train, mtry=ncol(dataset.ptf0)-1, ntrees=1000, importance=TRUE)
 bag.ptf_pred <- predict(bag.ptf_train, dataset.ptf0[-train,], type="class")
 M_bag <- table(bag.ptf_pred, post_tickets_flag[-train])
@@ -207,7 +210,7 @@ print("The fifteen most important predictors (by error) according to this model 
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
-bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+bag.I[1:15,] 
 ```
 
 Creating Random Forest Tree
@@ -225,10 +228,10 @@ Looking at Predictor Importance
 RF.I <- importance(RF.ptf_train)
 RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
 print("The fifteen most important predictors (by error) according to this model are as follows:")
-RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+RF.I[1:15,] 
 RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
-RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+RF.I[1:15,] 
 ```
 
 Creating a Boosted Tree
@@ -237,7 +240,11 @@ Creating a Boosted Tree
 dataset.ptfB <- dataset.ptf
 colnames(dataset.ptfB)[c(36,56)]
 dataset.ptfB <- dataset.ptfB[,-c(36,56)]
+```
+```{r,echo=FALSE}
 attach(dataset.ptfB)
+```
+```{r}
 #Modify response variable
 dataset.ptfB$post_tickets_flag <- y
 #distribution='bernoulli' requires 0,1 variable
@@ -259,6 +266,8 @@ POSTN_ptt <- POSTN[! POSTN %in% Q]
 POSTN_ptt
 a[POSTN_ptt]
 dataset.ptt <- d[,-POSTN_ptt]
+```
+```{r,echo=FALSE}
 attach(dataset.ptt)
 ```
 
@@ -289,8 +298,9 @@ Pruning the Tree
 cv.ptt_train <- cv.tree(tree.ptt_train, FUN=prune.tree)
 cv.ptt_train
 b <- which.min(cv.ptt_train$dev)
+Best <- cv.ptt_train$size[b]
 print(paste("The best trees seem to be of size",cv.ptt_train$size[b],"with deviation of",cv.ptt_train$dev[b],"."))
-prune.ptt_train <- prune.tree(tree.ptt_train, best=11)
+prune.ptt_train <- prune.tree(tree.ptt_train, best=Best)
 plot(prune.ptt_train)
 text(prune.ptt_train,pretty=0)
 prune.ptt_pred <- predict(prune.ptt_train, dataset.ptt[-train,])
@@ -306,7 +316,11 @@ Creating Bagged Tree
 #Creating a modified dataset - na values are not accepted in bagged trees
 dataset.ptt0 <- dataset.ptt
 dataset.ptt0[is.na(dataset.ptt0)] <- 0
+```
+```{r,echo=FALSE}
 attach(dataset.ptt0)
+```
+```{r}
 bag.ptt_train <- randomForest(post_total_tickets~., data=dataset.ptt0, subset=train, mtry=ncol(dataset.ptt0)-1, ntrees=1000, importance=TRUE)
 bag.ptt_pred <- predict(bag.ptt_train, dataset.ptt0[-train,])
 plot(bag.ptt_pred, post_total_tickets[-train])
@@ -355,7 +369,11 @@ Creating a Boosted Tree
 dataset.pttB <- dataset.ptt
 colnames(dataset.pttB)[c(36,56)]
 dataset.pttB <- dataset.pttB[,-c(36,56)]
+```
+```{r,echo=FALSE}
 attach(dataset.pttB)
+```
+```{r}
 boost.ptt_train <- gbm(post_total_tickets~., data=dataset.pttB[train,], distribution='gaussian', n.trees=1000, interaction.depth=4)
 boost.ptt_pred <- predict(boost.ptt_train, dataset.pttB[-train,], n.trees=1000)
 plot(boost.ptt_pred, post_total_tickets[-train])
@@ -363,8 +381,6 @@ abline(0,1)
 MSE.boost.ptt <- mean((boost.ptt_pred-post_total_tickets[-train])^2)
 MSE.boost.ptt
 print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptt),1),"total tickets purchased. Still not good enough."))
-
-print("Seems like there's not enough useful data for this prediction.")
 ```
 
 **C - How much money do people spend on tickets?**
@@ -374,9 +390,11 @@ Removing other response variables besides post_total_ticket_amt
 Q <- match('post_total_ticket_amt',a)
 a[Q]
 POSTN_ptta <- POSTN[! POSTN %in% Q]
-POSTN_ptta
+#POSTN_ptta
 a[POSTN_ptta]
 dataset.ptta <- d[,-POSTN_ptta]
+```
+```{r,echo=FALSE}
 attach(dataset.ptta)
 ```
 
@@ -407,8 +425,9 @@ Pruning the Tree
 cv.ptta_train <- cv.tree(tree.ptta_train, FUN=prune.tree)
 cv.ptta_train
 b <- which.min(cv.ptta_train$dev)
+Best <- cv.ptta_train$size[b]
 print(paste("The best trees seem to be of size",cv.ptta_train$size[b],"with deviation of",cv.ptta_train$dev[b],"."))
-prune.ptta_train <- prune.tree(tree.ptta_train, best=11)
+prune.ptta_train <- prune.tree(tree.ptta_train, best=Best)
 plot(prune.ptta_train)
 text(prune.ptta_train,pretty=0)
 prune.ptta_pred <- predict(prune.ptta_train, dataset.ptta[-train,])
@@ -424,7 +443,11 @@ Creating Bagged Tree
 #Creating a modified dataset - na values are not accepted in bagged trees
 dataset.ptta0 <- dataset.ptta
 dataset.ptta0[is.na(dataset.ptta0)] <- 0
+```
+```{r,echo=FALSE}
 attach(dataset.ptta0)
+```
+```{r}
 bag.ptta_train <- randomForest(post_total_ticket_amt~., data=dataset.ptta0, subset=train, mtry=ncol(dataset.ptta0)-1, ntrees=1000, importance=TRUE)
 bag.ptta_pred <- predict(bag.ptta_train, dataset.ptta0[-train,])
 plot(bag.ptta_pred, post_total_ticket_amt[-train])
@@ -473,7 +496,11 @@ Creating a Boosted Tree
 dataset.pttaB <- dataset.ptta
 colnames(dataset.pttaB)[c(36,56)]
 dataset.pttaB <- dataset.pttaB[,-c(36,56)]
+```
+```{r,echo=FALSE}
 attach(dataset.pttaB)
+```
+```{r}
 boost.ptta_train <- gbm(post_total_ticket_amt~., data=dataset.pttaB[train,], distribution='gaussian', n.trees=1000, interaction.depth=4)
 boost.ptta_pred <- predict(boost.ptta_train, dataset.pttaB[-train,], n.trees=1000)
 plot(boost.ptta_pred, post_total_ticket_amt[-train])
@@ -481,10 +508,131 @@ abline(0,1)
 MSE.boost.ptta <- mean((boost.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.boost.ptta
 print(paste("Test MSE is",MSE.boost.ptta,". Root MSE is",sqrt(MSE.boost.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptta),1),"total tickets purchased. Still not good enough."))
-
-print("Seems like there's not enough useful data for this prediction.")
 ```
 
-D - Who buys tickets at which price?
-Better seats can be marketted more to those who are more likely to buy them.
+**D - Who buys tickets at which price?**
 
+Removing other response variables besides post_avg_ticket_price
+```{r}
+Q <- match('post_avg_ticket_price',a)
+a[Q]
+POSTN_patp <- POSTN[! POSTN %in% Q]
+#POSTN_patp
+a[POSTN_patp]
+dataset.patp <- d[,-POSTN_patp]
+```
+```{r,echo=FALSE}
+attach(dataset.patp)
+```
+
+**Growing Trees**
+
+Growing Preliminary Regression Tree
+```{r}
+tree.patp <- tree(post_avg_ticket_price~., dataset.patp)
+plot(tree.patp)
+text(tree.patp,pretty=0)
+```
+
+Estimate MSE
+```{r}
+tree.patp_train <- tree(post_avg_ticket_price~., dataset.patp, subset=train)
+plot(tree.patp_train)
+text(tree.patp_train,pretty=0)
+tree.patp_pred <- predict(tree.patp_train, dataset.patp[-train,])
+plot(tree.patp_pred, post_avg_ticket_price[-train])
+abline(0,1)
+MSE.patp <- mean((tree.patp_pred-post_avg_ticket_price[-train])^2)
+MSE.patp
+print(paste("Test MSE is",MSE.patp,". Root MSE is",sqrt(MSE.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.patp),1),"total tickets purchased. This is pretty bad, considering the vast majority seem to have bought fewer than 20 or so tickets total."))
+```
+
+Pruning the Tree
+```{r}
+cv.patp_train <- cv.tree(tree.patp_train, FUN=prune.tree)
+cv.patp_train
+b <- which.min(cv.patp_train$dev)
+Best <- cv.patp_train$size[b]
+print(paste("The best trees seem to be of size",cv.patp_train$size[b],"with deviation of",cv.patp_train$dev[b],"."))
+prune.patp_train <- prune.tree(tree.patp_train, best=Best)
+plot(prune.patp_train)
+text(prune.patp_train,pretty=0)
+prune.patp_pred <- predict(prune.patp_train, dataset.patp[-train,])
+plot(prune.patp_pred, post_avg_ticket_price[-train])
+abline(0,1)
+MSE.prune.patp <- mean((prune.patp_pred-post_avg_ticket_price[-train])^2)
+MSE.prune.patp
+print(paste("Test MSE is",MSE.prune.patp,". Root MSE is",sqrt(MSE.prune.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.patp),1),"total tickets purchased. Successfully pruned, but still pretty bad."))
+```
+
+Creating Bagged Tree
+```{r}
+#Creating a modified dataset - na values are not accepted in bagged trees
+dataset.patp0 <- dataset.patp
+dataset.patp0[is.na(dataset.patp0)] <- 0
+```
+```{r,echo=FALSE}
+attach(dataset.patp0)
+```
+```{r}
+bag.patp_train <- randomForest(post_avg_ticket_price~., data=dataset.patp0, subset=train, mtry=ncol(dataset.patp0)-1, ntrees=1000, importance=TRUE)
+bag.patp_pred <- predict(bag.patp_train, dataset.patp0[-train,])
+plot(bag.patp_pred, post_avg_ticket_price[-train])
+abline(0,1)
+MSE.bag.patp <- mean((bag.patp_pred-post_avg_ticket_price[-train])^2)
+MSE.bag.patp
+print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.bag.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.patp),1),"total tickets purchased. No dice."))
+```
+
+Looking at Predictor Importance 
+```{r}
+bag.I <- importance(bag.ptf_train)
+bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
+print("The fifteen most important predictors (by error) according to this model are as follows:")
+bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
+print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+```
+
+Creating Random Forest Tree
+```{r}
+RF.patp_train <- randomForest(post_avg_ticket_price~., data=dataset.patp0, subset=train, importance=TRUE)
+RF.patp_pred <- predict(RF.patp_train, dataset.patp0[-train,])
+plot(RF.patp_pred, post_avg_ticket_price[-train])
+abline(0,1)
+MSE.RF.patp <- mean((RF.patp_pred-post_avg_ticket_price[-train])^2)
+MSE.RF.patp
+print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.RF.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.patp),1),"total tickets purchased. Best of so far, nothing good yet."))
+```
+
+Looking at Predictor Importance 
+```{r}
+RF.I <- importance(RF.ptf_train)
+RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
+print("The fifteen most important predictors (by error) according to this model are as follows:")
+RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
+print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+```
+
+Creating a Boosted Tree
+```{r}
+#Creating a modified dataset - columns with no variation are not accepted in boosted trees
+dataset.patpB <- dataset.patp
+colnames(dataset.patpB)[c(36,56)]
+dataset.patpB <- dataset.patpB[,-c(36,56)]
+```
+```{r,echo=FALSE}
+attach(dataset.patpB)
+```
+```{r}
+boost.patp_train <- gbm(post_avg_ticket_price~., data=dataset.patpB[train,], distribution='gaussian', n.trees=1000, interaction.depth=4)
+boost.patp_pred <- predict(boost.patp_train, dataset.patpB[-train,], n.trees=1000)
+plot(boost.patp_pred, post_avg_ticket_price[-train])
+abline(0,1)
+MSE.boost.patp <- mean((boost.patp_pred-post_avg_ticket_price[-train])^2)
+MSE.boost.patp
+print(paste("Test MSE is",MSE.boost.patp,". Root MSE is",sqrt(MSE.boost.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.patp),1),"total tickets purchased. Still not good enough."))
+```
