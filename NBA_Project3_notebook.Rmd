@@ -4,7 +4,7 @@ author: "Ilya Kukovitskiy"
 date: "April 30, 2018"
 output: html_document
 ---
-```{r,echo=FALSE}
+```{r,results='hide'}
 set.seed(1)
 library(tree)
 library(randomForest)
@@ -119,7 +119,7 @@ POSTN_ptf <- POSTN[! POSTN %in% Q]
 a[POSTN_ptf]
 dataset.ptf <- d[,-POSTN_ptf]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptf)
 ```
 
@@ -141,7 +141,7 @@ Ticket <- ifelse(y<0.5,"No","Yes")
 dataset.ptf[,R] <- Ticket
 dataset.ptf[,R] <- factor(dataset.ptf[,R])
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptf)
 ```
 ```{r}
@@ -156,7 +156,7 @@ plot(tree.ptf)
 text(tree.ptf,pretty=0)
 ```
 
-Estimate Error Rate
+Estimate Error Rate on (extremely similar) Trained Tree
 ```{r}
 tree.ptf_train <- tree(post_tickets_flag~., dataset.ptf, subset=train)
 plot(tree.ptf_train)
@@ -164,6 +164,8 @@ text(tree.ptf_train,pretty=0)
 tree.ptf_pred <- predict(tree.ptf_train, dataset.ptf[-train,], type="class")
 M <- table(tree.ptf_pred, post_tickets_flag[-train])
 M
+```
+```{r,echo=FALSE}
 print(paste("The test error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
 ```
 
@@ -180,6 +182,8 @@ text(prune.ptf_train,pretty=0)
 prune.ptf_pred <- predict(prune.ptf_train, dataset.ptf[-train,], type="class")
 M_prune <- table(prune.ptf_pred, post_tickets_flag[-train])
 M_prune
+```
+```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
 print("Same error rate.")
 ```
@@ -190,7 +194,7 @@ Creating Bagged Tree
 dataset.ptf0 <- dataset.ptf
 dataset.ptf0[is.na(dataset.ptf0)] <- 0
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptf0)
 ```
 ```{r}
@@ -198,6 +202,8 @@ bag.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=tra
 bag.ptf_pred <- predict(bag.ptf_train, dataset.ptf0[-train,], type="class")
 M_bag <- table(bag.ptf_pred, post_tickets_flag[-train])
 M_bag
+```
+```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
 print("About 90% accurate!")
 ```
@@ -206,10 +212,18 @@ Looking at Predictor Importance
 ```{r}
 bag.I <- importance(bag.ptf_train)
 bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] 
 ```
 
@@ -219,6 +233,8 @@ RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=trai
 RF.ptf_pred <- predict(RF.ptf_train, dataset.ptf0[-train,], type="class")
 M_RF <- table(RF.ptf_pred, post_tickets_flag[-train])
 M_RF
+```
+```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
 print("More than 90% accurate!")
 ```
@@ -227,10 +243,18 @@ Looking at Predictor Importance
 ```{r}
 RF.I <- importance(RF.ptf_train)
 RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] 
 RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] 
 ```
 
@@ -241,7 +265,7 @@ dataset.ptfB <- dataset.ptf
 colnames(dataset.ptfB)[c(36,56)]
 dataset.ptfB <- dataset.ptfB[,-c(36,56)]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptfB)
 ```
 ```{r}
@@ -251,9 +275,10 @@ dataset.ptfB$post_tickets_flag <- y
 boost.ptf_train <- gbm(post_tickets_flag~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=1000, interaction.depth=4)
 boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], n.trees=1000)
 M_boost <- table(boost.ptf_pred, post_tickets_flag[-train])
-M_boost
+```
+```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
-print("We might just never know how accurate this is...")
+print("A bit worse, but still above 90% accuracy!")
 ```
 
 **B - How many tickets do people buy?**
@@ -263,11 +288,11 @@ Removing other response variables besides post_total_tickets
 Q <- match('post_total_tickets',a)
 a[Q]
 POSTN_ptt <- POSTN[! POSTN %in% Q]
-POSTN_ptt
+#POSTN_ptt
 a[POSTN_ptt]
 dataset.ptt <- d[,-POSTN_ptt]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptt)
 ```
 
@@ -280,7 +305,7 @@ plot(tree.ptt)
 text(tree.ptt,pretty=0)
 ```
 
-Estimate MSE
+Estimate MSE on (extremely similar) Trained Tree
 ```{r}
 tree.ptt_train <- tree(post_total_tickets~., dataset.ptt, subset=train)
 plot(tree.ptt_train)
@@ -290,7 +315,10 @@ plot(tree.ptt_pred, post_total_tickets[-train])
 abline(0,1)
 MSE.ptt <- mean((tree.ptt_pred-post_total_tickets[-train])^2)
 MSE.ptt
-print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptt),1),"total tickets purchased. This is pretty bad, considering the vast majority seem to have bought fewer than 20 or so tickets total."))
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptt),1),"total tickets purchased."))
+#fix Compare with distribution of response through box-plot
 ```
 
 Pruning the Tree
@@ -308,7 +336,9 @@ plot(prune.ptt_pred, post_total_tickets[-train])
 abline(0,1)
 MSE.prune.ptt <- mean((prune.ptt_pred-post_total_tickets[-train])^2)
 MSE.prune.ptt
-print(paste("Test MSE is",MSE.prune.ptt,". Root MSE is",sqrt(MSE.prune.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptt),1),"total tickets purchased. Successfully pruned, but still pretty bad."))
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",MSE.prune.ptt,". Root MSE is",sqrt(MSE.prune.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptt),1),"total tickets purchased. Successfully pruned, with about the same error."))
 ```
 
 Creating Bagged Tree
@@ -317,7 +347,7 @@ Creating Bagged Tree
 dataset.ptt0 <- dataset.ptt
 dataset.ptt0[is.na(dataset.ptt0)] <- 0
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptt0)
 ```
 ```{r}
@@ -327,17 +357,27 @@ plot(bag.ptt_pred, post_total_tickets[-train])
 abline(0,1)
 MSE.bag.ptt <- mean((bag.ptt_pred-post_total_tickets[-train])^2)
 MSE.bag.ptt
-print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.bag.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptt),1),"total tickets purchased. No dice."))
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.bag.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptt),1),"total tickets purchased. A little better!"))
 ```
 
 Looking at Predictor Importance 
 ```{r}
 bag.I <- importance(bag.ptf_train)
 bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 ```
 
@@ -349,17 +389,27 @@ plot(RF.ptt_pred, post_total_tickets[-train])
 abline(0,1)
 MSE.RF.ptt <- mean((RF.ptt_pred-post_total_tickets[-train])^2)
 MSE.RF.ptt
-print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.RF.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptt),1),"total tickets purchased. Best of so far, nothing good yet."))
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.RF.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptt),1),"total tickets purchased. A tiny bit better."))
 ```
 
 Looking at Predictor Importance 
 ```{r}
 RF.I <- importance(RF.ptf_train)
 RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 ```
 
@@ -370,7 +420,7 @@ dataset.pttB <- dataset.ptt
 colnames(dataset.pttB)[c(36,56)]
 dataset.pttB <- dataset.pttB[,-c(36,56)]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.pttB)
 ```
 ```{r}
@@ -380,7 +430,9 @@ plot(boost.ptt_pred, post_total_tickets[-train])
 abline(0,1)
 MSE.boost.ptt <- mean((boost.ptt_pred-post_total_tickets[-train])^2)
 MSE.boost.ptt
-print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptt),1),"total tickets purchased. Still not good enough."))
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptt),1),"total tickets purchased. Not the best."))
 ```
 
 **C - How much money do people spend on tickets?**
@@ -394,7 +446,7 @@ POSTN_ptta <- POSTN[! POSTN %in% Q]
 a[POSTN_ptta]
 dataset.ptta <- d[,-POSTN_ptta]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptta)
 ```
 
@@ -407,7 +459,7 @@ plot(tree.ptta)
 text(tree.ptta,pretty=0)
 ```
 
-Estimate MSE
+Estimate MSE on (extremely similar) Trained Tree
 ```{r}
 tree.ptta_train <- tree(post_total_ticket_amt~., dataset.ptta, subset=train)
 plot(tree.ptta_train)
@@ -417,6 +469,8 @@ plot(tree.ptta_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.ptta <- mean((tree.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.ptta
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.ptta,". Root MSE is",sqrt(MSE.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptta),1),"total tickets purchased. This is pretty bad, considering the vast majority seem to have bought fewer than 20 or so tickets total."))
 ```
 
@@ -435,6 +489,8 @@ plot(prune.ptta_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.prune.ptta <- mean((prune.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.prune.ptta
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.prune.ptta,". Root MSE is",sqrt(MSE.prune.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptta),1),"total tickets purchased. Successfully pruned, but still pretty bad."))
 ```
 
@@ -444,7 +500,7 @@ Creating Bagged Tree
 dataset.ptta0 <- dataset.ptta
 dataset.ptta0[is.na(dataset.ptta0)] <- 0
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.ptta0)
 ```
 ```{r}
@@ -454,6 +510,8 @@ plot(bag.ptta_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.bag.ptta <- mean((bag.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.bag.ptta
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.bag.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptta),1),"total tickets purchased. No dice."))
 ```
 
@@ -461,10 +519,18 @@ Looking at Predictor Importance
 ```{r}
 bag.I <- importance(bag.ptf_train)
 bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 ```
 
@@ -476,6 +542,8 @@ plot(RF.ptta_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.RF.ptta <- mean((RF.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.RF.ptta
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.RF.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptta),1),"total tickets purchased. Best of so far, nothing good yet."))
 ```
 
@@ -483,10 +551,18 @@ Looking at Predictor Importance
 ```{r}
 RF.I <- importance(RF.ptf_train)
 RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 ```
 
@@ -497,7 +573,7 @@ dataset.pttaB <- dataset.ptta
 colnames(dataset.pttaB)[c(36,56)]
 dataset.pttaB <- dataset.pttaB[,-c(36,56)]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.pttaB)
 ```
 ```{r}
@@ -507,6 +583,8 @@ plot(boost.ptta_pred, post_total_ticket_amt[-train])
 abline(0,1)
 MSE.boost.ptta <- mean((boost.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.boost.ptta
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.boost.ptta,". Root MSE is",sqrt(MSE.boost.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptta),1),"total tickets purchased. Still not good enough."))
 ```
 
@@ -521,7 +599,7 @@ POSTN_patp <- POSTN[! POSTN %in% Q]
 a[POSTN_patp]
 dataset.patp <- d[,-POSTN_patp]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.patp)
 ```
 
@@ -534,7 +612,7 @@ plot(tree.patp)
 text(tree.patp,pretty=0)
 ```
 
-Estimate MSE
+Estimate MSE on (extremely similar) Trained Tree
 ```{r}
 tree.patp_train <- tree(post_avg_ticket_price~., dataset.patp, subset=train)
 plot(tree.patp_train)
@@ -544,6 +622,8 @@ plot(tree.patp_pred, post_avg_ticket_price[-train])
 abline(0,1)
 MSE.patp <- mean((tree.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.patp
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.patp,". Root MSE is",sqrt(MSE.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.patp),1),"total tickets purchased. This is pretty bad, considering the vast majority seem to have bought fewer than 20 or so tickets total."))
 ```
 
@@ -553,7 +633,11 @@ cv.patp_train <- cv.tree(tree.patp_train, FUN=prune.tree)
 cv.patp_train
 b <- which.min(cv.patp_train$dev)
 Best <- cv.patp_train$size[b]
+```
+```{r,echo=FALSE}
 print(paste("The best trees seem to be of size",cv.patp_train$size[b],"with deviation of",cv.patp_train$dev[b],"."))
+```
+```{r}
 prune.patp_train <- prune.tree(tree.patp_train, best=Best)
 plot(prune.patp_train)
 text(prune.patp_train,pretty=0)
@@ -562,6 +646,8 @@ plot(prune.patp_pred, post_avg_ticket_price[-train])
 abline(0,1)
 MSE.prune.patp <- mean((prune.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.prune.patp
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.prune.patp,". Root MSE is",sqrt(MSE.prune.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.patp),1),"total tickets purchased. Successfully pruned, but still pretty bad."))
 ```
 
@@ -571,7 +657,7 @@ Creating Bagged Tree
 dataset.patp0 <- dataset.patp
 dataset.patp0[is.na(dataset.patp0)] <- 0
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.patp0)
 ```
 ```{r}
@@ -581,6 +667,8 @@ plot(bag.patp_pred, post_avg_ticket_price[-train])
 abline(0,1)
 MSE.bag.patp <- mean((bag.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.bag.patp
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.bag.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.patp),1),"total tickets purchased. No dice."))
 ```
 
@@ -588,10 +676,18 @@ Looking at Predictor Importance
 ```{r}
 bag.I <- importance(bag.ptf_train)
 bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 ```
 
@@ -603,6 +699,8 @@ plot(RF.patp_pred, post_avg_ticket_price[-train])
 abline(0,1)
 MSE.RF.patp <- mean((RF.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.RF.patp
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.RF.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.patp),1),"total tickets purchased. Best of so far, nothing good yet."))
 ```
 
@@ -610,10 +708,18 @@ Looking at Predictor Importance
 ```{r}
 RF.I <- importance(RF.ptf_train)
 RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
 print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
 RF.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
 ```
 
@@ -624,7 +730,7 @@ dataset.patpB <- dataset.patp
 colnames(dataset.patpB)[c(36,56)]
 dataset.patpB <- dataset.patpB[,-c(36,56)]
 ```
-```{r,echo=FALSE}
+```{r,results='hide'}
 attach(dataset.patpB)
 ```
 ```{r}
@@ -634,5 +740,7 @@ plot(boost.patp_pred, post_avg_ticket_price[-train])
 abline(0,1)
 MSE.boost.patp <- mean((boost.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.boost.patp
+```
+```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.boost.patp,". Root MSE is",sqrt(MSE.boost.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.patp),1),"total tickets purchased. Still not good enough."))
 ```
