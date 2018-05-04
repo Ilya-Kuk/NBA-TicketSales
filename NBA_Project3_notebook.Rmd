@@ -9,9 +9,10 @@ set.seed(1)
 library(tree)
 library(randomForest)
 library(gbm)
+library(ggplot2)
 ```
 
-**Data Preprocessing**
+## Data Preprocessing
 
 Reading in and storing dataset from file
 ```{r}
@@ -95,20 +96,29 @@ for(i in 1:length(a)){ #getting rejected values
 a[POSTN]
 ```
 
-**Given this dataset, a few useful questions can be answered:**
-A - Who buys tickets?
+## Given this dataset, a few useful questions can be answered:
+
+[**A** - Who buys tickets?](#begin_A)
 Successful or unsuccessful marketting strategies can be identified.
 
-B - How many tickets do people buy?
+[**B** - How many tickets do people buy?]($begin_B)
 Besides success of strategy; if a person is likely to buy more tickets than they have purchased, they can likely be sold more tickets.
 
-C - How much money do people spend on tickets?
+[**C** - How much money do people spend on tickets?]($begin_C)
 Same rationale as B, but with dollar-value rather than number of games.
 
-D - Who buys tickets at which price?
+[**D** - Who buys tickets at which price?]($begin_D)
 Better seats can be marketted more to those who are more likely to buy them.
 
-**A - Who buys tickets?**
+### <a id="begin_A"></a>A - Who buys tickets?
+
+Creating matrix to record model type and effectiveness
+```{r}
+A_methods <- matrix(c("",""),
+                    nrow=1,
+                    ncol=2)
+colnames(A_methods) <- c("Method","Accuracy")
+```
 
 Removing other response variables besides post_tickets_flag
 ```{r}
@@ -156,7 +166,7 @@ plot(tree.ptf)
 text(tree.ptf,pretty=0)
 ```
 
-Estimate Error Rate on (extremely similar) Trained Tree
+Estimate and Record Error Rate on (extremely similar) Trained Tree
 ```{r}
 tree.ptf_train <- tree(post_tickets_flag~., dataset.ptf, subset=train)
 plot(tree.ptf_train)
@@ -164,6 +174,7 @@ text(tree.ptf_train,pretty=0)
 tree.ptf_pred <- predict(tree.ptf_train, dataset.ptf[-train,], type="class")
 M <- table(tree.ptf_pred, post_tickets_flag[-train])
 M
+A_methods <- rbind(A_methods, c('Tree',1-M[1,2]+M[2,1])/(sum(M)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
@@ -182,6 +193,7 @@ text(prune.ptf_train,pretty=0)
 prune.ptf_pred <- predict(prune.ptf_train, dataset.ptf[-train,], type="class")
 M_prune <- table(prune.ptf_pred, post_tickets_flag[-train])
 M_prune
+A_methods <- rbind(A_methods, c('Cross Validated Tree',1-M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
@@ -202,6 +214,7 @@ bag.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=tra
 bag.ptf_pred <- predict(bag.ptf_train, dataset.ptf0[-train,], type="class")
 M_bag <- table(bag.ptf_pred, post_tickets_flag[-train])
 M_bag
+A_methods <- rbind(A_methods, c('Bagged Tree',1-M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
@@ -233,6 +246,7 @@ RF.ptf_train <- randomForest(post_tickets_flag~., data=dataset.ptf0, subset=trai
 RF.ptf_pred <- predict(RF.ptf_train, dataset.ptf0[-train,], type="class")
 M_RF <- table(RF.ptf_pred, post_tickets_flag[-train])
 M_RF
+A_methods <- rbind(A_methods, c('Random Forest Tree',1-M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
@@ -275,13 +289,25 @@ dataset.ptfB$post_tickets_flag <- y
 boost.ptf_train <- gbm(post_tickets_flag~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=1000, interaction.depth=4)
 boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], n.trees=1000)
 M_boost <- table(boost.ptf_pred, post_tickets_flag[-train])
+A_methods <- rbind(A_methods, c('Boosted Tree',1-M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
 print("A bit worse, but still above 90% accuracy!")
 ```
 
-**B - How many tickets do people buy?**
+Looking at Most Effective Method
+```{r}
+A_methods <- A_methods[-1,]
+A_methods[order(A_methods$Accuracy),]
+Top <- A_methods[1,]
+```
+```{r,echo=FALSE}
+print(paste("The most effective method was the",Top[1],", with",Top[2],"accuracy."))
+```
+[Back to top](#top)
+
+### <a id="begin_B"></a>B - How many tickets do people buy?
 
 Removing other response variables besides post_total_tickets
 ```{r}
@@ -294,6 +320,17 @@ dataset.ptt <- d[,-POSTN_ptt]
 ```
 ```{r,results='hide'}
 attach(dataset.ptt)
+```
+
+Looking at distribution of test responst variable
+```{r}
+#Creating Violin Plot
+p <- ggplot(dataset.ptt[-train,], aes(y=post_total_tickets, 1))
+p + geom_violin()
+#Finding Number of Zeroes
+O <- table(post_total_tickets[-train]==0)
+#O[2]
+print(paste(O[2]/(O[1]+O[2]),"of the values are zeroes."))
 ```
 
 **Growing Trees**
@@ -317,7 +354,7 @@ MSE.ptt <- mean((tree.ptt_pred-post_total_tickets[-train])^2)
 MSE.ptt
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptt),1),"total tickets purchased."))
+print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptt),2),"total tickets purchased."))
 #fix Compare with distribution of response through box-plot
 ```
 
@@ -338,7 +375,7 @@ MSE.prune.ptt <- mean((prune.ptt_pred-post_total_tickets[-train])^2)
 MSE.prune.ptt
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.prune.ptt,". Root MSE is",sqrt(MSE.prune.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptt),1),"total tickets purchased. Successfully pruned, with about the same error."))
+print(paste("Test MSE is",MSE.prune.ptt,". Root MSE is",sqrt(MSE.prune.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptt),2),"total tickets purchased."))
 ```
 
 Creating Bagged Tree
@@ -359,7 +396,7 @@ MSE.bag.ptt <- mean((bag.ptt_pred-post_total_tickets[-train])^2)
 MSE.bag.ptt
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.bag.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptt),1),"total tickets purchased. A little better!"))
+print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.bag.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptt),2),"total tickets purchased."))
 ```
 
 Looking at Predictor Importance 
@@ -391,7 +428,7 @@ MSE.RF.ptt <- mean((RF.ptt_pred-post_total_tickets[-train])^2)
 MSE.RF.ptt
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.RF.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptt),1),"total tickets purchased. A tiny bit better."))
+print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.RF.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptt),2),"total tickets purchased."))
 ```
 
 Looking at Predictor Importance 
@@ -432,10 +469,11 @@ MSE.boost.ptt <- mean((boost.ptt_pred-post_total_tickets[-train])^2)
 MSE.boost.ptt
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptt),1),"total tickets purchased. Not the best."))
+print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptt),2),"total tickets purchased."))
 ```
+[Back to top](#top)
 
-**C - How much money do people spend on tickets?**
+### <a id="begin_C"></a>C - How much money do people spend on tickets?
 
 Removing other response variables besides post_total_ticket_amt
 ```{r}
@@ -448,6 +486,17 @@ dataset.ptta <- d[,-POSTN_ptta]
 ```
 ```{r,results='hide'}
 attach(dataset.ptta)
+```
+
+Looking at distribution of test responst variable
+```{r}
+#Creating Violin Plot
+p <- ggplot(dataset.ptta[-train,], aes(y=post_total_ticket_amt, 0))
+p + geom_violin()
+#Finding Number of Zeroes
+O <- table(post_total_ticket_amt[-train]==0)
+#O[2]
+print(paste(O[2]/(O[1]+O[2]),"of the values are zeroes."))
 ```
 
 **Growing Trees**
@@ -471,7 +520,7 @@ MSE.ptta <- mean((tree.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.ptta
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.ptta,". Root MSE is",sqrt(MSE.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptta),1),"total tickets purchased. This is pretty bad, considering the vast majority seem to have bought fewer than 20 or so tickets total."))
+print(paste("Test MSE is",MSE.ptta,". Root MSE is",sqrt(MSE.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptta),1),"dollars of total ticket amount."))
 ```
 
 Pruning the Tree
@@ -491,7 +540,7 @@ MSE.prune.ptta <- mean((prune.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.prune.ptta
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.prune.ptta,". Root MSE is",sqrt(MSE.prune.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptta),1),"total tickets purchased. Successfully pruned, but still pretty bad."))
+print(paste("Test MSE is",MSE.prune.ptta,". Root MSE is",sqrt(MSE.prune.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptta),1),"dollars of total ticket amount."))
 ```
 
 Creating Bagged Tree
@@ -512,7 +561,7 @@ MSE.bag.ptta <- mean((bag.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.bag.ptta
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.bag.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptta),1),"total tickets purchased. No dice."))
+print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.bag.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptta),1),"dollars of total ticket amount."))
 ```
 
 Looking at Predictor Importance 
@@ -544,7 +593,7 @@ MSE.RF.ptta <- mean((RF.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.RF.ptta
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.RF.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptta),1),"total tickets purchased. Best of so far, nothing good yet."))
+print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.RF.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptta),1),"dollars of total ticket amount."))
 ```
 
 Looking at Predictor Importance 
@@ -585,10 +634,11 @@ MSE.boost.ptta <- mean((boost.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.boost.ptta
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.boost.ptta,". Root MSE is",sqrt(MSE.boost.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptta),1),"total tickets purchased. Still not good enough."))
+print(paste("Test MSE is",MSE.boost.ptta,". Root MSE is",sqrt(MSE.boost.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptta),1),"dollars of total ticket amount."))
 ```
+[Back to top](#top)
 
-**D - Who buys tickets at which price?**
+### <a id="begin_D"></a>D - Who buys tickets at which price?
 
 Removing other response variables besides post_avg_ticket_price
 ```{r}
@@ -601,6 +651,17 @@ dataset.patp <- d[,-POSTN_patp]
 ```
 ```{r,results='hide'}
 attach(dataset.patp)
+```
+
+Looking at distribution of test response variable
+```{r}
+#Creating Violin Plot
+p <- ggplot(dataset.patp[-train,], aes(y=post_avg_ticket_price, 0))
+p + geom_violin()
+#Finding Number of Zeroes
+O <- table(post_avg_ticket_price[-train]==0)
+#O[2]
+print(paste(O[2]/(O[1]+O[2]),"of the values are zeroes."))
 ```
 
 **Growing Trees**
@@ -624,7 +685,7 @@ MSE.patp <- mean((tree.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.patp
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.patp,". Root MSE is",sqrt(MSE.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.patp),1),"total tickets purchased. This is pretty bad, considering the vast majority seem to have bought fewer than 20 or so tickets total."))
+print(paste("Test MSE is",MSE.patp,". Root MSE is",sqrt(MSE.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.patp),1),"dollars of the average ticket price."))
 ```
 
 Pruning the Tree
@@ -648,7 +709,7 @@ MSE.prune.patp <- mean((prune.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.prune.patp
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.prune.patp,". Root MSE is",sqrt(MSE.prune.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.patp),1),"total tickets purchased. Successfully pruned, but still pretty bad."))
+print(paste("Test MSE is",MSE.prune.patp,". Root MSE is",sqrt(MSE.prune.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.patp),1),"dollars of the average ticket price."))
 ```
 
 Creating Bagged Tree
@@ -669,7 +730,7 @@ MSE.bag.patp <- mean((bag.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.bag.patp
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.bag.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.patp),1),"total tickets purchased. No dice."))
+print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.bag.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.patp),1),"dollars of the average ticket price."))
 ```
 
 Looking at Predictor Importance 
@@ -701,7 +762,7 @@ MSE.RF.patp <- mean((RF.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.RF.patp
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.RF.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.patp),1),"total tickets purchased. Best of so far, nothing good yet."))
+print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.RF.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.patp),1),"dollars of the average ticket price."))
 ```
 
 Looking at Predictor Importance 
@@ -742,5 +803,6 @@ MSE.boost.patp <- mean((boost.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.boost.patp
 ```
 ```{r,echo=FALSE}
-print(paste("Test MSE is",MSE.boost.patp,". Root MSE is",sqrt(MSE.boost.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.patp),1),"total tickets purchased. Still not good enough."))
+print(paste("Test MSE is",MSE.boost.patp,". Root MSE is",sqrt(MSE.boost.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.patp),1),"dollars of the average ticket price."))
 ```
+[Back to top](#top)
