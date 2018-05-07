@@ -3,6 +3,7 @@ title: "NBA Project"
 author: "Ilya Kukovitskiy"
 date: "April 30, 2018"
 output: html_document
+self_contained: no
 ---
 ```{r,results='hide'}
 set.seed(1)
