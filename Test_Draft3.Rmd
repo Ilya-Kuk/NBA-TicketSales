@@ -1,0 +1,161 @@
+---
+title: "NBA Project"
+author: "Ilya Kukovitskiy"
+date: "May 7, 2018"
+output: html_document
+self_contained: no
+---
+```{r,results='hide',message=FALSE}
+set.seed(1)
+library(tree)
+library(randomForest)
+library(gbm)
+library(ggplot2)
+```
+
+## Data Preprocessing
+
+#### Reading in and storing dataset from file
+
+```{r}
+d <- read.csv("nbasample2GrpPlus0429.csv",header=T, sep=",")
+```
+
+#### Removing ax_ and la_ variales, as requested
+
+```{r}
+a <- colnames(d)
+AX <- grepl("ax_",a) #seeing which values have prefix ax_
+AXN <- c() #creating temporary vector recording positions
+for(i in 1:length(a)){ #getting rejected values
+  if(AX[i]){
+    AXN <- c(AXN,i)
+  }
+}
+d <- d[,-AXN] #removing rejected values
+a <- colnames(d)
+LA <- grepl("la_",a)
+LAN <- c() #creating temporary vector recording positions
+for(i in 1:length(a)){ #getting rejected values
+  if(LA[i]){
+    LAN <- c(LAN,i)
+  }
+}
+d <- d[,-LAN] #removing rejected values
+a <- colnames(d)
+#Cleaning up Environment
+rm(AX,AXN,LA,LAN)
+```
+
+#### Removing other Variables
+
+```{r}
+#closest_arena and closest_team are identical - removing closest_arena
+
+x <- match("closest_arena",a)
+#x
+d <- d[,-x]
+a <- colnames(d)
+#match("closest_arena",a) #successfully removed
+
+#tree() can only handle 32 levels on factor predictors
+
+#names(Filter(is.factor, d)) #taking a look at which variables have factors - 
+
+#zip_team and zip_arena have 56 levels - too many to grow trees on - removing both
+x <- match(c("zip_team","zip_arena"),a)
+#x
+d <- d[,-x]
+a <- colnames(d)
+#match(c("zip_team","zip_arena"),a) #successfully removed
+
+#email_domain has 1468 levels - too many.. -removing
+x <- match(c("email_domain"),a)
+#x
+d <- d[,-x]
+a <- colnames(d)
+#match(c("email_domain"),a) #successfully removed
+
+#source_date has 3773 levels - too many.. -removing
+x <- match(c("source_date"),a)
+#x
+d <- d[,-x]
+a <- colnames(d)
+#match(c("source_date"),a) #successfully removed
+```
+
+#### Making a training/test set vector
+
+```{r}
+train <- sample(1:nrow(d), nrow(d)*(.8))
+```
+
+### Removing other response variables besides post_total_tickets
+
+```{r}
+#Finding postion of desired response variable
+Q <- match('post_total_tickets',a)
+a[Q]
+#Removing all other response (post_) variables
+POSTN_ptt <- POSTN[! POSTN %in% Q]
+#POSTN_ptt
+a[POSTN_ptt]
+dataset.ptt <- d[,-POSTN_ptt]
+```
+```{r,results='hide',message=FALSE}
+attach(dataset.ptt)
+```
+
+#### Looking at distribution of test response variable
+
+```{r}
+#Creating Violin Plot
+p <- ggplot(dataset.ptt[-train,], aes(y=post_total_tickets, 1))
+p + geom_violin()
+```
+
+#### That's a lot of zeroes
+
+```{r}
+#Finding Number of Zeroes
+O <- table(post_total_tickets[-train]==0)
+#O[2]
+```
+
+#### Growing Preliminary Regression Tree
+
+```{r}
+#Growing Tree
+tree.ptt <- tree(post_total_tickets~., dataset.ptt)
+#Plotting Tree
+plot(tree.ptt)
+text(tree.ptt,pretty=0)
+```
+
+#### Estimate MSE on (extremely similar) Trained Tree
+
+```{r}
+#Growing Tree
+tree.ptt_train <- tree(post_total_tickets~., dataset.ptt, subset=train)
+#Plotting Tree
+plot(tree.ptt_train)
+text(tree.ptt_train,pretty=0)
+```
+
+#### Calculating, Plotting, and Recording (Mean Squared) Error
+
+```{r}
+#Fitting model on test set
+tree.ptt_pred <- predict(tree.ptt_train, dataset.ptt[-train,])
+plot(tree.ptt_pred, post_total_tickets[-train])
+abline(0,1)
+#Residuals plot
+plot(post_total_tickets[-train],(tree.ptt_pred-post_total_tickets[-train]))
+#MSE
+MSE.ptt <- mean((tree.ptt_pred-post_total_tickets[-train])^2)
+MSE.ptt
+```
+```{r,echo=FALSE}
+print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptt),2),"total tickets purchased."))
+#fix Compare with distribution of response through box-plot
+```
