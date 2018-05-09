@@ -13,6 +13,8 @@ library(gbm)
 library(ggplot2)
 ```
 
+# Since there are so many zeroes, this may skew the regression models. This removes all zero-values for regression response variables and fits new trees.
+
 [Skip Data Preprocessing](#top)
 
 ## Data Preprocessing
@@ -114,9 +116,6 @@ a[POSTN]
 
 ## <a id="top"></a>Given this dataset, a few useful questions can be answered:
 
-### [**A** - Who buys tickets?](#begin_A)
-#### Successful or unsuccessful marketting strategies can be identified.
-##### [Model A Assessment](#end_A)
 ### [**B** - How many tickets do people buy?](#begin_B)
 #### Besides success of strategy; if a person is likely to buy more tickets than they have purchased, they can likely be sold more tickets.
 ##### [Model B Assessment](#end_B)
@@ -129,268 +128,6 @@ a[POSTN]
 #### Better seats can be marketted more to those who are more likely to buy them.
 ##### [Model D Assessment](#end_D)
 
-
-## <a id="begin_A"></a>A - Who buys tickets?
-
-## Creating matrix to record model type and effectiveness
-
-```{r}
-A_methods <- matrix(c("",""),
-                    nrow=1,
-                    ncol=2)
-colnames(A_methods) <- c("Method","Accuracy")
-```
-
-### Removing other response variables besides post_ticket_response
-
-```{r}
-#Finding position of response variable
-Q <- match('post_ticket_response',a) #new response variable in this dataset
-a[Q]
-#Finding position of all other response (post_) variables
-POSTN_ptf <- POSTN[! POSTN %in% Q]
-#POSTN_ptf
-a[POSTN_ptf]
-dataset.ptf <- d[,-POSTN_ptf]
-```
-```{r,results='hide',message=FALSE}
-attach(dataset.ptf)
-```
-
-#### Creating pure Classification Response Vector
-
-```{r}
-#Finding response vector
-a.ptf <- colnames(dataset.ptf)
-resp.ptf <- grepl("post_",a.ptf)
-for(i in 1:length(a.ptf)){
-  if(resp.ptf[i]){
-    R <- i
-  }
-}
-a.ptf[R]
-#Converting it to a yes/no factor
-y <- post_ticket_response
-Ticket <- ifelse(y<0.5,"No","Yes")
-dataset.ptf[,R] <- Ticket
-dataset.ptf[,R] <- factor(dataset.ptf[,R])
-```
-```{r,results='hide',message=FALSE}
-attach(dataset.ptf)
-```
-```{r}
-#Cleaning up environment space (keeping y as is for creaing boosted tree)
-rm(Ticket) 
-```
-
-#### Growing Preliminary Classification Tree
-
-```{r}
-#Growing Tree
-tree.ptf <- tree(post_ticket_response~., dataset.ptf)
-#Plotting Tree
-plot(tree.ptf)
-text(tree.ptf,pretty=0)
-```
-
-#### Growing (extremely similar) Trained Tree
-
-```{r}
-#Growing Tree
-tree.ptf_train <- tree(post_ticket_response~., dataset.ptf, subset=train)
-#Plotting Tree
-plot(tree.ptf_train)
-text(tree.ptf_train,pretty=0)
-```
-
-#### Estimating and Record Error Rate
-
-```{r}
-```
-
-#### Calculating, Plotting, and Recording Error Rate
-
-```{r}
-#Fitting model on test set
-tree.ptf_pred <- predict(tree.ptf_train, dataset.ptf[-train,], type="class")
-#Confusion Matrix
-M <- table(tree.ptf_pred, post_ticket_response[-train])
-M
-A_methods <- rbind(A_methods, c("Tree",(1-(M[1,2]+M[2,1])/(sum(M)))))
-```
-```{r,echo=FALSE}
-print(paste("The test error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
-#Cross Validating Tree
-cv.ptf_train <- cv.tree(tree.ptf_train, FUN=prune.misclass)
-#Looking for best parameter
-cv.ptf_train
-b <- which.min(cv.ptf_train$dev)
-Best <- cv.ptf_train$size[b]
-```
-```{r,echo=FALSE}
-print(paste("The best trees seem to be of size",cv.ptf_train$size[b],"with cross-validation error of",cv.ptf_train$dev[b]))
-```
-```{r}
-#Pruning tree according to this
-prune.ptf_train <- prune.misclass(tree.ptf_train, best=Best)
-#Plotting Tree
-plot(prune.ptf_train)
-text(prune.ptf_train,pretty=0)
-```
-
-#### Estimating and Record Error Rate
-
-```{r}
-#Fitting model on test set
-prune.ptf_pred <- predict(prune.ptf_train, dataset.ptf[-train,], type="class")
-#Confusion Matrix
-M_prune <- table(prune.ptf_pred, post_ticket_response[-train])
-M_prune
-A_methods <- rbind(A_methods, c('Cross Validated Tree',(1-(M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
-```
-```{r,echo=FALSE}
-print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
-```
-
-#### Creating Bagged Tree
-
-```{r}
-#Creating a modified dataset - na values are not accepted in bagged trees
-dataset.ptf0 <- dataset.ptf
-dataset.ptf0[is.na(dataset.ptf0)] <- 0
-```
-```{r,results='hide',message=FALSE}
-attach(dataset.ptf0)
-```
-```{r}
-#Growing Tree
-bag.ptf_train <- randomForest(post_ticket_response~., data=dataset.ptf0, subset=train, mtry=ncol(dataset.ptf0)-1, ntrees=1000, importance=TRUE)
-#Can't plot tree
-#Fitting tree on test set
-bag.ptf_pred <- predict(bag.ptf_train, dataset.ptf0[-train,], type="class")
-#Confusion Matrix
-M_bag <- table(bag.ptf_pred, post_ticket_response[-train])
-M_bag
-A_methods <- rbind(A_methods, c('Bagged Tree',(1-(M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
-```
-```{r,echo=FALSE}
-print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
-print("About 90% accurate!")
-```
-
-#### Looking at Predictor Importance 
-
-```{r}
-bag.I <- importance(bag.ptf_train)
-bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
-```
-```{r,echo=FALSE}
-print("The fifteen most important predictors (by error) according to this model are as follows:")
-```
-```{r}
-bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
-bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
-```
-```{r,echo=FALSE}
-print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
-```
-```{r}
-bag.I[1:15,] 
-```
-
-#### Creating Random Forest Tree
-
-```{r}
-#Growing Tree
-RF.ptf_train <- randomForest(post_ticket_response~., data=dataset.ptf0, subset=train, ntrees=1000, importance=TRUE)
-#Can't plot tree
-```
-
-#### Estimating and Record Error Rate
-
-```{r}
-#Fitting model on test set
-RF.ptf_pred <- predict(RF.ptf_train, dataset.ptf0[-train,], type="class")
-#Confusion Matrix
-M_RF <- table(RF.ptf_pred, post_ticket_response[-train])
-M_RF
-A_methods <- rbind(A_methods, c('Random Forest Tree',(1-(M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
-```
-```{r,echo=FALSE}
-print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
-print("More than 90% accurate!")
-```
-
-#### Looking at Predictor Importance
-
-```{r}
-RF.I <- importance(RF.ptf_train)
-RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
-```
-```{r,echo=FALSE}
-print("The fifteen most important predictors (by error) according to this model are as follows:")
-```
-```{r}
-RF.I[1:15,] 
-RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
-```
-```{r,echo=FALSE}
-print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
-```
-```{r}
-RF.I[1:15,] 
-```
-
-#### Creating a Boosted Tree
-
-```{r}
-#Creating a modified dataset - columns with no variation are not accepted in boosted trees
-dataset.ptfB <- dataset.ptf
-colnames(dataset.ptfB)[c(36,56)]
-dataset.ptfB <- dataset.ptfB[,-c(36,56)]
-```
-```{r,results='hide',message=FALSE}
-attach(dataset.ptfB)
-```
-```{r}
-#Modify response variable
-dataset.ptfB$post_ticket_response <- y
-#distribution='bernoulli' requires 0,1 variable
-#Growing Tree
-boost.ptf_train <- gbm(post_ticket_response~., data=dataset.ptfB[train,], distribution='bernoulli', n.trees=1000, interaction.depth=4)
-#Can't plot tree
-```
-
-#### Estimating and Record Error Rate
-
-```{r}
-#Fitting model on test set
-boost.ptf_pred <- predict(boost.ptf_train, dataset.ptfB[-train,], n.trees=1000)
-#Confusion Matrix
-M_boost <- table(boost.ptf_pred, post_ticket_response[-train])
-A_methods <- rbind(A_methods, c('Boosted Tree',(1-(M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
-```
-```{r,echo=FALSE}
-print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
-```
-
-### <a id="end_A"></a>**A** Looking at Most Effective Method
-
-```{r}
-A_methods <- A_methods[-1,]
-A_methods <- A_methods[order(A_methods[,2],decreasing = TRUE),]
-A_methods
-Top <- A_methods[1,]
-```
-```{r,echo=FALSE}
-print(paste("The most effective method was the",Top[1],", with",Top[2],"accuracy."))
-A_methods <- matrix(c("","",""), #New method matrix initialized
-                    nrow=1,
-                    ncol=3)
-colnames(A_methods) <- c("Method","Mean Squared Error","Square Root MSE")
-```
-
-[Back to top](#top)
 
 ## <a id="begin_B"></a>B - How many tickets do people buy?
 
@@ -426,6 +163,12 @@ O <- table(post_total_tickets[-train]==0)
 O[2]
 ```
 
+#### Removing the zeroes
+
+```{r}
+dataset.ptt <- dataset.ptt[-post_total_tickets==0,]
+```
+
 #### Growing Preliminary Regression Tree
 
 ```{r}
@@ -458,7 +201,7 @@ plot(post_total_tickets[-train],(tree.ptt_pred-post_total_tickets[-train]))
 #MSE
 MSE.ptt <- mean((tree.ptt_pred-post_total_tickets[-train])^2)
 MSE.ptt
-A_methods <- rbind(A_methods, c('Tree',MSE.ptt,sqrt(MSE.ptt)))
+A_methods <- rbind(A_methods, c('Tree',MSE.ptt))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.ptt,". Root MSE is",sqrt(MSE.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptt),2),"total tickets purchased."))
@@ -497,7 +240,7 @@ plot(post_total_tickets[-train],(prune.ptt_pred-post_total_tickets[-train]))
 #MSE
 MSE.prune.ptt <- mean((prune.ptt_pred-post_total_tickets[-train])^2)
 MSE.prune.ptt
-A_methods <- rbind(A_methods, c('Cross Validated Tree',MSE.prune.ptt,sqrt(MSE.prune.ptt)))
+A_methods <- rbind(A_methods, c('Cross Validated Tree',MSE.prune.ptt))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.prune.ptt,". Root MSE is",sqrt(MSE.prune.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptt),2),"total tickets purchased."))
@@ -531,7 +274,7 @@ plot(post_total_tickets[-train],(bag.ptt_pred-post_total_tickets[-train]))
 #MSE
 MSE.bag.ptt <- mean((bag.ptt_pred-post_total_tickets[-train])^2)
 MSE.bag.ptt
-A_methods <- rbind(A_methods, c('Bagged Tree',MSE.bag.ptt,sqrt(MSE.bag.ptt)))
+A_methods <- rbind(A_methods, c('Bagged Tree',MSE.bag.ptt))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.bag.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptt),2),"total tickets purchased."))
@@ -577,7 +320,7 @@ plot(post_total_tickets[-train],(RF.ptt_pred-post_total_tickets[-train]))
 #MSE
 MSE.RF.ptt <- mean((RF.ptt_pred-post_total_tickets[-train])^2)
 MSE.RF.ptt
-A_methods <- rbind(A_methods, c('Random Forest Tree',MSE.RF.ptt,sqrt(MSE.RF.ptt)))
+A_methods <- rbind(A_methods, c('Random Forest Tree',MSE.RF.ptt))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.ptt,". Root MSE is",sqrt(MSE.RF.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptt),2),"total tickets purchased."))
@@ -632,7 +375,7 @@ plot(post_total_tickets[-train],(boost.ptt_pred-post_total_tickets[-train]))
 #MSE
 MSE.boost.ptt <- mean((boost.ptt_pred-post_total_tickets[-train])^2)
 MSE.boost.ptt
-A_methods <- rbind(A_methods, c('Boosted Tree',MSE.boost.ptt,sqrt(MSE.boost.ptt)))
+A_methods <- rbind(A_methods, c('Boosted Tree',MSE.boost.ptt))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.boost.ptt,". Root MSE is",sqrt(MSE.boost.ptt),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptt),2),"total tickets purchased."))
@@ -648,7 +391,7 @@ Top <- A_methods[1,]
 ```
 ```{r,echo=FALSE}
 print(paste("The most effective method was the",Top[1],", with",Top[3],"Square root MSE."))
-A_methods <- matrix(c("","",""),
+A_methods <- matrix(c("","",""), #New method matrix initialized
                     nrow=1,
                     ncol=3)
 colnames(A_methods) <- c("Method","Mean Squared Error","Square Root MSE")
@@ -698,6 +441,12 @@ O <- table(post_total_ticket_amt[-train]==0)
 O[2]
 ```
 
+#### Removing the zeroes
+
+```{r}
+dataset.ptta <- dataset.ptt[-post_total_ticket_amt==0,]
+```
+
 #### Growing Preliminary Regression Tree
 
 ```{r}
@@ -729,7 +478,7 @@ plot(post_total_tickets[-train],(tree.ptta_pred-post_total_ticket_amt[-train]))
 #MSE
 MSE.ptta <- mean((tree.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.ptta
-A_methods <- rbind(A_methods, c("Tree",MSE.ptta,sqrt(MSE.ptta)))
+A_methods <- rbind(A_methods, c("Tree",MSE.ptta))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.ptta,". Root MSE is",sqrt(MSE.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.ptta),1),"dollars of total ticket amount."))
@@ -767,7 +516,7 @@ plot(post_total_tickets[-train],(prune.ptta_pred-post_total_ticket_amt[-train]))
 #MSE
 MSE.prune.ptta <- mean((prune.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.prune.ptta
-A_methods <- rbind(A_methods, c("Cross Validated Tree",MSE.prune.ptta,sqrt(MSE.prune.ptta)))
+A_methods <- rbind(A_methods, c("Cross Validated Tree",MSE.prune.ptta))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.prune.ptta,". Root MSE is",sqrt(MSE.prune.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.ptta),1),"dollars of total ticket amount."))
@@ -801,7 +550,7 @@ plot(post_total_tickets[-train],(bag.ptta_pred-post_total_ticket_amt[-train]))
 #MSE
 MSE.bag.ptta <- mean((bag.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.bag.ptta
-A_methods <- rbind(A_methods, c("Bagged Tree",MSE.bag.ptta,sqrt(MSE.bag.ptta)))
+A_methods <- rbind(A_methods, c("Bagged Tree",MSE.bag.ptta))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.bag.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.ptta),1),"dollars of total ticket amount."))
@@ -846,7 +595,7 @@ plot(post_total_tickets[-train],(RF.ptta_pred-post_total_ticket_amt[-train]))
 #MSE
 MSE.RF.ptta <- mean((RF.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.RF.ptta
-A_methods <- rbind(A_methods, c("Random Forest Tree",MSE.RF.ptta,sqrt(MSE.RF.ptta)))
+A_methods <- rbind(A_methods, c("Random Forest Tree",MSE.RF.ptta))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.ptta,". Root MSE is",sqrt(MSE.RF.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.ptta),1),"dollars of total ticket amount."))
@@ -899,7 +648,7 @@ plot(post_total_tickets[-train],(boost.ptta_pred-post_total_ticket_amt[-train]))
 #MSE
 MSE.boost.ptta <- mean((boost.ptta_pred-post_total_ticket_amt[-train])^2)
 MSE.boost.ptta
-A_methods <- rbind(A_methods, c("Boosted Tree",MSE.boost.ptta,sqrt(MSE.boost.ptta)))
+A_methods <- rbind(A_methods, c("Boosted Tree",MSE.boost.ptta))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.boost.ptta,". Root MSE is",sqrt(MSE.boost.ptta),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.ptta),1),"dollars of total ticket amount."))
@@ -915,7 +664,7 @@ Top <- A_methods[1,]
 ```
 ```{r,echo=FALSE}
 print(paste("The most effective method was the",Top[1],", with",Top[3],"Square root MSE."))
-A_methods <- matrix(c("","",""),
+A_methods <- matrix(c("","",""), #New method matrix initialized
                     nrow=1,
                     ncol=3)
 colnames(A_methods) <- c("Method","Mean Squared Error","Square Root MSE")
@@ -969,6 +718,12 @@ O[2]
 print(paste(O[2]/(O[1]+O[2]),"of the values are zeroes."))
 ```
 
+#### Removing the zeroes
+
+```{r}
+dataset.patp <- dataset.patp[-post_avg_ticket_price==0,]
+```
+
 #### Growing Preliminary Regression Tree
 
 ```{r}
@@ -1000,7 +755,7 @@ plot(post_total_tickets[-train],(tree.patp_pred-post_avg_ticket_price[-train]))
 #MSE
 MSE.patp <- mean((tree.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.patp
-A_methods <- rbind(A_methods, c("Tree",MSE.patp,sqrt(MSE.patp)))
+A_methods <- rbind(A_methods, c("Tree",MSE.patp ))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.patp,". Root MSE is",sqrt(MSE.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.patp),1),"dollars of the average ticket price."))
@@ -1038,7 +793,7 @@ plot(post_total_tickets[-train],(prune.patp_pred-post_avg_ticket_price[-train]))
 #MSE
 MSE.prune.patp <- mean((prune.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.prune.patp
-A_methods <- rbind(A_methods, c("Cross Validated Tree",MSE.prune.patp,sqrt(MSE.prune.patp)))
+A_methods <- rbind(A_methods, c("Cross Validated Tree",MSE.prune.patp))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.prune.patp,". Root MSE is",sqrt(MSE.prune.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.prune.patp),1),"dollars of the average ticket price."))
@@ -1072,7 +827,7 @@ plot(post_total_tickets[-train],(bag.patp_pred-post_avg_ticket_price[-train]))
 #MSE
 MSE.bag.patp <- mean((bag.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.bag.patp
-A_methods <- rbind(A_methods, c("Bagged Tree",MSE.bag.patp,sqrt(MSE.bag.patp)))
+A_methods <- rbind(A_methods, c("Bagged Tree",MSE.bag.patp))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.bag.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.bag.patp),1),"dollars of the average ticket price."))
@@ -1117,7 +872,7 @@ plot(post_total_tickets[-train],(RF.patp_pred-post_avg_ticket_price[-train]))
 #MSE
 MSE.RF.patp <- mean((RF.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.RF.patp
-A_methods <- rbind(A_methods, c("Random Forest Tree",MSE.RF.patp,sqrt(MSE.RF.patp)))
+A_methods <- rbind(A_methods, c("Random Forest Tree",MSE.RF.patp))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.bag.patp,". Root MSE is",sqrt(MSE.RF.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.RF.patp),1),"dollars of the average ticket price."))
@@ -1170,7 +925,7 @@ plot(post_total_tickets[-train],(boost.patp_pred-post_avg_ticket_price[-train]))
 #MSE
 MSE.boost.patp <- mean((boost.patp_pred-post_avg_ticket_price[-train])^2)
 MSE.boost.patp
-A_methods <- rbind(A_methods, c("Boosted Tree",MSE.boost.patp,sqrt(MSE.boost.patp)))
+A_methods <- rbind(A_methods, c("Boosted Tree",MSE.boost.patp))
 ```
 ```{r,echo=FALSE}
 print(paste("Test MSE is",MSE.boost.patp,". Root MSE is",sqrt(MSE.boost.patp),", indicating this model leads to test predictions within around",round(sqrt(MSE.boost.patp),1),"dollars of the average ticket price."))
@@ -1185,6 +940,9 @@ Top <- A_methods[1,]
 ```
 ```{r,echo=FALSE}
 print(paste("The most effective method was the",Top[1],", with",Top[3],"Square root MSE."))
+A_methods <- matrix(c("",""),
+                    nrow=1,
+                    ncol=2)
 ```
 
 #### (Recall) Looking at distribution of test response variable
