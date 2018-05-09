@@ -13,4 +13,7 @@ The datasets were given in this order:
   (Slightly modified data - ax_ and la_ variables to be discarded, new response variable that is identical to the last!)
   
   3. nbasample2GrpPlus0429.csv
- 
+  
+  (New dataset - already split up into Training set and Test set. with a LOT more variables)
+  
+  4. Train: nbasample2GrpPlus0505.csv  ,  Test: validationSample1k0506.csv
