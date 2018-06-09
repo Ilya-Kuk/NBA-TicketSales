@@ -1,0 +1,356 @@
+---
+title: "NBA Project"
+author: "Ilya Kukovitskiy"
+date: "May 9, 2018"
+output: html_document
+self_contained: no
+---
+```{r,results='hide',message=FALSE}
+set.seed(1)
+library(tree)
+library(randomForest)
+library(gbm)
+library(ggplot2)
+```
+
+[Skip Data Preprocessing](#top)
+
+## Data Preprocessing
+
+#### Reading in and storing datasets from file
+
+```{r}
+d_train <- read.csv("NBAretail_cust_060318_10k.csv",header=T, sep=",")
+d_test <- read.csv("NBAretail_cust_060318_1k.csv",header=T, sep=",")
+```
+
+#### Combining datasets (keeping in mind last 1000 are test observations)
+```{r}
+d <- rbind(d_train, d_test)
+rm(d_train, d_test)
+```
+
+#### Removing 'individual_id_new' and 'fan_pmt', as requested
+
+```{r}
+a <- colnames(d)
+x <- match("individual_id_new",a)
+x
+d <- d[,-x]
+a <- colnames(d)
+match("individual_id_new",a) #successfully removed
+
+x <- match("fan_pmt",a)
+x
+d <- d[,-x]
+a <- colnames(d)
+match("fan_pmt",a) #successfully removed
+
+#tree() can only handle 32 levels on factor predictors
+V_fact <- names(Filter(is.factor, d)) #taking a look at which variables have factors - 
+V_fact
+I_fact <- match(V_fact,a)
+I_fact
+L_fact <- c()
+L_fact
+for(j in 1:length(I_fact)){
+  L_temp <- nlevels(d[,I_fact[j]])
+  L_fact <- c(L_fact,L_temp)
+}
+L_fact
+#There are no factors with over 32 levels
+```
+
+#### Removing variables without referneces to teams (since team preferences change from season to season)
+
+```{r}
+TEAM <- grepl("team",a)
+TEAMN <- c()
+for(i in 1:length(a)){ #getting rejected values
+  if(TEAM[i]){
+    TEAMN <- c(TEAMN,i)
+  }
+}
+a[TEAMN] #seeing variables to be removed
+d <- d[,-TEAMN] #removing variables
+a <- colnames(d)
+```
+```{r,results='hide',message=FALSE}
+attach(d)
+```
+
+#### Making a training/test set - Recall, last 1000 observations are test observations
+
+```{r}
+train <- 10001:11000
+```
+
+#### Viewing Response Variable
+
+```{r}
+POST <- grepl("post_",a)
+POSTN <- c()
+for(i in 1:length(a)){ #getting rejected values
+  if(POST[i]){
+    POSTN <- c(POSTN,i)
+  }
+}
+#POSTN
+a[POSTN]
+```
+
+## Creating matrix to record model type and effectiveness
+
+```{r}
+A_methods <- matrix(c("",""),
+                    nrow=1,
+                    ncol=2)
+colnames(A_methods) <- c("Method","Accuracy")
+```
+
+#### Creating dataset with pure Classification Response Vector
+
+```{r}
+dataset.prr <- d
+#Converting response variable to a factor
+y <- post_retail_response
+Y <- as.factor(post_retail_response)
+dataset.prr$post_retail_response <- Y
+```
+```{r,results='hide',message=FALSE}
+attach(dataset.prr)
+```
+```{r}
+#Cleaning up environment space (keeping y as is for creaing boosted tree)
+rm(Y)
+```
+
+#### Performing Logistic Regression
+
+```{r}
+#initial logistic regression
+glm.prr <- glm(post_retail_response~., data=dataset.prr, family=binomial)
+summary(glm.prr)
+S <- summary(glm.prr)$coefficients
+S
+#Obtaining variables with p-value threshhold of .1
+S1E1 <- S[ S[,4]<0.1 ,]
+S1E1
+sign1E1 <- rownames(S1E1)
+sign1E1
+```
+```{r}
+#creating new logistic regression
+glm.prr_1 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
+summary(glm.prr_1)
+```
+```{r}
+#emailopendays seems useless
+#creating new logistic regression
+glm.prr_2 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
+summary(glm.prr_2)
+
+```
+
+#### Growing Preliminary Classification Tree
+
+```{r}
+#Growing Tree
+tree.prr <- tree(post_retail_response~., dataset.prr)
+#Plotting Tree
+plot(tree.prr)
+text(tree.prr,pretty=0)
+```
+
+#### Growing (extremely similar) Trained Tree
+
+```{r}
+#Growing Tree
+tree.prr_train <- tree(post_retail_response~., dataset.prr, subset=train)
+#Plotting Tree
+plot(tree.prr_train)
+text(tree.prr_train,pretty=0)
+```
+
+#### Calculating, Plotting, and Recording Error Rate
+
+```{r}
+#Fitting model on test set
+tree.prr_pred <- predict(tree.prr_train, dataset.prr[-train,], type="class")
+#Confusion Matrix
+M <- table(tree.prr_pred, post_retail_response[-train])
+M
+A_methods <- rbind(A_methods, c("Tree",(1-(M[1,2]+M[2,1])/(sum(M)))))
+```
+```{r,echo=FALSE}
+print(paste("The test error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
+#Cross Validating Tree
+cv.prr_train <- cv.tree(tree.prr_train, FUN=prune.misclass)
+#Looking for best parameter
+cv.prr_train
+b <- which.min(cv.prr_train$dev)
+Best <- cv.prr_train$size[b]
+```
+```{r,echo=FALSE}
+print(paste("The best trees seem to be of size",cv.prr_train$size[b],"with cross-validation error of",cv.prr_train$dev[b]))
+```
+```{r}
+#Pruning tree according to this
+prune.prr_train <- prune.misclass(tree.prr_train, best=Best)
+#Plotting Tree
+plot(prune.prr_train)
+text(prune.prr_train,pretty=0)
+```
+
+#### Estimating and Record Error Rate
+
+```{r}
+#Fitting model on test set
+prune.prr_pred <- predict(prune.prr_train, dataset.prr[-train,], type="class")
+#Confusion Matrix
+M_prune <- table(prune.prr_pred, post_retail_response[-train])
+M_prune
+A_methods <- rbind(A_methods, c('Cross Validated Tree',(1-(M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
+```
+```{r,echo=FALSE}
+print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
+```
+
+#### Creating Bagged Tree
+
+```{r}
+#Creating a modified dataset - na values are not accepted in bagged trees
+dataset.prr0 <- dataset.prr
+dataset.prr0[is.na(dataset.prr0)] <- 0
+```
+```{r,results='hide',message=FALSE}
+attach(dataset.prr0)
+```
+```{r}
+#Growing Tree
+bag.prr_train <- randomForest(post_retail_response~., data=dataset.prr0, subset=train, mtry=ncol(dataset.prr0)-1, ntrees=1000, importance=TRUE)
+#Can't plot tree
+#Fitting tree on test set
+bag.prr_pred <- predict(bag.prr_train, dataset.prr0[-train,], type="class")
+#Confusion Matrix
+M_bag <- table(bag.prr_pred, post_retail_response[-train])
+M_bag
+A_methods <- rbind(A_methods, c('Bagged Tree',(1-(M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
+```
+```{r,echo=FALSE}
+print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
+```
+
+#### Looking at Predictor Importance 
+
+```{r}
+bag.I <- importance(bag.prr_train)
+bag.I <- bag.I[ order(bag.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
+print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
+bag.I[1:15,] #includes variable 'tenure' - is this to be removed from this dataset as well?
+bag.I <- bag.I[ order(bag.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
+print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
+bag.I[1:15,] 
+```
+
+#### Creating Random Forest Tree
+
+```{r}
+#Growing Tree
+RF.prr_train <- randomForest(post_retail_response~., data=dataset.prr0, subset=train, ntrees=1000, importance=TRUE)
+#Can't plot tree
+```
+
+#### Estimating and Record Error Rate
+
+```{r}
+#Fitting model on test set
+RF.prr_pred <- predict(RF.prr_train, dataset.prr0[-train,], type="class")
+#Confusion Matrix
+M_RF <- table(RF.prr_pred, post_retail_response[-train])
+M_RF
+A_methods <- rbind(A_methods, c('Random Forest Tree',(1-(M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
+```
+```{r,echo=FALSE}
+print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
+print("More than 90% accurate!")
+```
+
+#### Looking at Predictor Importance
+
+```{r}
+RF.I <- importance(RF.prr_train)
+RF.I <- RF.I[ order(RF.I[,3],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
+print("The fifteen most important predictors (by error) according to this model are as follows:")
+```
+```{r}
+RF.I[1:15,] 
+RF.I <- RF.I[ order(RF.I[,4],decreasing=TRUE), ]
+```
+```{r,echo=FALSE}
+print("The fifteen most important predictors (by Gini index) according to this model are as follows:")
+```
+```{r}
+RF.I[1:15,] 
+```
+
+#### Creating a Boosted Tree
+
+```{r}
+#Creating a modified dataset - columns with no variation are not accepted in boosted trees
+dataset.prrB <- dataset.prr
+colnames(dataset.prrB)[c(36,56)]
+dataset.prrB <- dataset.prrB[,-c(36,56)]
+```
+```{r,results='hide',message=FALSE}
+attach(dataset.prrB)
+```
+```{r}
+#Modify response variable
+dataset.prrB$post_retail_response <- y
+#distribution='bernoulli' requires 0,1 variable
+#Growing Tree
+boost.prr_train <- gbm(post_retail_response~., data=dataset.prrB[train,], distribution='bernoulli', n.trees=1000, interaction.depth=4)
+#Can't plot tree
+```
+
+#### Estimating and Record Error Rate
+
+```{r}
+#Fitting model on test set
+boost.prr_pred <- predict(boost.prr_train, dataset.prrB[-train,], n.trees=1000)
+#Confusion Matrix
+M_boost <- table(boost.prr_pred, post_retail_response[-train])
+A_methods <- rbind(A_methods, c('Boosted Tree',(1-(M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
+```
+```{r,echo=FALSE}
+print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
+```
+
+### <a id="end_A"></a>**A** Looking at Most Effective Method
+
+```{r}
+A_methods <- A_methods[-1,]
+A_methods <- A_methods[order(A_methods[,2],decreasing = TRUE),]
+A_methods
+Top <- A_methods[1,]
+```
+```{r,echo=FALSE}
+print(paste("The most effective method was the",Top[1],", with",Top[2],"accuracy."))
+A_methods <- matrix(c("","",""), #New method matrix initialized
+                    nrow=1,
+                    ncol=3)
+colnames(A_methods) <- c("Method","Mean Squared Error","Square Root MSE")
+```
+
+[Back to top](#top)
