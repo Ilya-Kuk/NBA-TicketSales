@@ -17,3 +17,7 @@ The datasets were given in this order:
   (New dataset - already split up into Training set and Test set. with a LOT more variables)
   
   4. Train: nbasample2GrpPlus0505.csv  ,  Test: validationSample1k0506.csv
+
+After the semester ended, I am continuing to work on this data as a research consultant, at least for the Summer. I was tasked with tacking on Logistic Regression and ROC Curves. 
+
+  5. Train: NBAretail_cust_060318_10k , Test: NBAretail_cust_060318_1k
