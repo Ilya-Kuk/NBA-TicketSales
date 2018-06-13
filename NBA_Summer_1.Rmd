@@ -11,6 +11,19 @@ library(tree)
 library(randomForest)
 library(gbm)
 library(ggplot2)
+require(ROCR)
+
+rocplot_p = function(pred, truth, ...){
+  predob = prediction(pred, truth)
+  perf = performance(predob, "tpr", "fpr")
+  plot(perf,...)
+}
+
+rocplot_n = function(pred, truth, ...){
+  predob = prediction(pred, truth)
+  perf = performance(predob, "tnr", "fnr")
+  plot(perf,...)
+}
 ```
 
 [Skip Data Preprocessing](#top)
@@ -27,7 +40,7 @@ d_test <- read.csv("NBAretail_cust_060318_1k.csv",header=T, sep=",")
 #### Combining datasets (keeping in mind last 1000 are test observations)
 ```{r}
 d <- rbind(d_train, d_test)
-rm(d_train, d_test)
+rm(d_train, d_test) #cleaning up environment
 ```
 
 #### Removing 'individual_id_new' and 'fan_pmt', as requested
@@ -59,6 +72,7 @@ for(j in 1:length(I_fact)){
 }
 L_fact
 #There are no factors with over 32 levels
+rm(V_fact,I_fact,L_fact,L_temp,x) #clearing environment space
 ```
 
 #### Removing variables without referneces to teams (since team preferences change from season to season)
@@ -74,6 +88,7 @@ for(i in 1:length(a)){ #getting rejected values
 a[TEAMN] #seeing variables to be removed
 d <- d[,-TEAMN] #removing variables
 a <- colnames(d)
+rm(TEAM, TEAMN) #clearing environment space
 ```
 ```{r,results='hide',message=FALSE}
 attach(d)
@@ -97,6 +112,7 @@ for(i in 1:length(a)){ #getting rejected values
 }
 #POSTN
 a[POSTN]
+rm(POST, POSTN) #clearing environment space
 ```
 
 ## Creating matrix to record model type and effectiveness
@@ -125,15 +141,26 @@ attach(dataset.prr)
 rm(Y)
 ```
 
-#### Performing Logistic Regression
+#### Performing Preliminary Logistic Regression
 
 ```{r}
 #initial logistic regression
 glm.prr <- glm(post_retail_response~., data=dataset.prr, family=binomial)
 summary(glm.prr)
 S <- summary(glm.prr)$coefficients
-S
-#Obtaining variables with p-value threshhold of .1
+#Fitting the model probabilities to existing observations
+glm.prr_probs <- predict(glm.prr,type='response')
+glm.prr_pred <- rep(0,nrow(d))
+glm.prr_pred[glm.prr_probs>0.5] <- 1
+#Confusion Matrix
+M_glm <- table(glm.prr_pred, post_retail_response)
+M_glm #barely better than 50/50
+A_methods <- rbind(A_methods, c('log',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm)))))
+#ROC Curves
+rocplot_p(glm.prr_probs, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
+rocplot_n(glm.prr_probs, na.omit(d)$post_retail_response)
+#Attempting to improve
+print('Obtaining variables with p-value threshhold of .1')
 S1E1 <- S[ S[,4]<0.1 ,]
 S1E1
 sign1E1 <- rownames(S1E1)
@@ -141,15 +168,46 @@ sign1E1
 ```
 ```{r}
 #creating new logistic regression
-glm.prr_1 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
+glm.prr1 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
 summary(glm.prr_1)
+S1 <- summary(glm.prr1)$coefficients
+#Fitting the model probabilities to existing observations
+glm.prr1_probs <- predict(glm.prr1,type='response')
+glm.prr1_pred <- rep(0,nrow(d))
+glm.prr1_pred[glm.prr1_probs>0.5] <- 1
+#Confusion Matrix
+M_glm1 <- table(glm.prr1_pred, post_retail_response)
+M_glm1 #barely better than 50/50
+A_methods <- rbind(A_methods, c('log1',(1-(M_glm1[1,2]+M_glm1[2,1])/(sum(M_glm1)))))
+#ROC Curves
+##certain variables with NA's removed, using omitted dataset to make predictions
+glm.prr1_ROC <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=na.omit(dataset.prr), family=binomial) 
+glm.prr1_probs_ROC <- predict(glm.prr1_ROC,type='response')
+rocplot_p(glm.prr1_probs_ROC, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
+rocplot_n(glm.prr1_probs_ROC, na.omit(d)$post_retail_response)
+#Attempting to improve
+#emailopendays seems useless
 ```
 ```{r}
-#emailopendays seems useless
-#creating new logistic regression
-glm.prr_2 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
-summary(glm.prr_2)
-
+#creating new logistic regression, without emailopendays
+glm.prr2 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
+summary(glm.prr2)
+S2 <- summary(glm.prr2)$coefficients
+S2
+#Fitting the model probabilities to existing observations
+glm.prr2_probs <- predict(glm.prr2,type='response')
+glm.prr2_pred <- rep(0,nrow(d))
+glm.prr2_pred[glm.prr2_probs>0.5] <- 1
+#Confusion Matrix
+M_glm2 <- table(glm.prr2_pred, post_retail_response)
+M_glm2 #barely better than 50/50
+A_methods <- rbind(A_methods, c('log2',(1-(M_glm2[1,2]+M_glm2[2,1])/(sum(M_glm2)))))
+#ROC Curves
+##certain variables with NA's removed, using omitted dataset to make predictions
+glm.prr2_ROC <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=na.omit(dataset.prr), family=binomial) 
+glm.prr2_probs_ROC <- predict(glm.prr2_ROC,type='response')
+rocplot_p(glm.prr2_probs_ROC, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
+rocplot_n(glm.prr2_probs_ROC, na.omit(d)$post_retail_response)
 ```
 
 #### Growing Preliminary Classification Tree
