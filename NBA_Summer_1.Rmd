@@ -40,7 +40,6 @@ d_test <- read.csv("NBAretail_cust_060318_1k.csv",header=T, sep=",")
 #### Combining datasets (keeping in mind last 1000 are test observations)
 ```{r}
 d <- rbind(d_train, d_test)
-rm(d_train, d_test) #cleaning up environment
 ```
 
 #### Removing 'individual_id_new' and 'fan_pmt', as requested
@@ -169,7 +168,7 @@ sign1E1
 ```{r}
 #creating new logistic regression
 glm.prr1 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
-summary(glm.prr_1)
+summary(glm.prr1)
 S1 <- summary(glm.prr1)$coefficients
 #Fitting the model probabilities to existing observations
 glm.prr1_probs <- predict(glm.prr1,type='response')
@@ -208,6 +207,27 @@ glm.prr2_ROC <- glm(post_retail_response ~ days_since_most_recent_email + days_s
 glm.prr2_probs_ROC <- predict(glm.prr2_ROC,type='response')
 rocplot_p(glm.prr2_probs_ROC, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
 rocplot_n(glm.prr2_probs_ROC, na.omit(d)$post_retail_response)
+```
+
+#### Performing Logistic Regression with Train/Test Sets
+
+```{r}
+#Creating Training Set & Test Set
+
+glm.prr <- glm(post_retail_response~., data=dataset.prr, family=binomial)
+summary(glm.prr)
+S <- summary(glm.prr)$coefficients
+#Fitting the model probabilities to existing observations
+glm.prr_probs <- predict(glm.prr,type='response')
+glm.prr_pred <- rep(0,nrow(d))
+glm.prr_pred[glm.prr_probs>0.5] <- 1
+#Confusion Matrix
+M_glm <- table(glm.prr_pred, post_retail_response)
+M_glm #barely better than 50/50
+A_methods <- rbind(A_methods, c('log',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm)))))
+#ROC Curves
+rocplot_p(glm.prr_probs, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
+rocplot_n(glm.prr_probs, na.omit(d)$post_retail_response)
 ```
 
 #### Growing Preliminary Classification Tree
