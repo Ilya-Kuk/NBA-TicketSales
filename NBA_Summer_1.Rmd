@@ -1,7 +1,7 @@
 ---
-title: "NBA Project"
-author: "Ilya Kukovitskiy"
-date: "May 9, 2018"
+title: "NBA Ticketsales with Logistic Regression and Decision Trees"
+author: "Ilya Kukovitskiy, Karl Heiner Statistical Consulting, Ltd"
+date: "June 19, 2018"
 output: html_document
 self_contained: no
 ---
@@ -12,6 +12,8 @@ library(randomForest)
 library(gbm)
 library(ggplot2)
 require(ROCR)
+#
+require(pROC)
 
 rocplot_p = function(pred, truth, ...){
   predob = prediction(pred, truth)
@@ -26,20 +28,22 @@ rocplot_n = function(pred, truth, ...){
 }
 ```
 
-[Skip Data Preprocessing](#top)
+[Skip Data Preprocessing](#DatAn)
 
 ## Data Preprocessing
 
 #### Reading in and storing datasets from file
 
 ```{r}
-d_train <- read.csv("NBAretail_cust_060318_10k.csv",header=T, sep=",")
-d_test <- read.csv("NBAretail_cust_060318_1k.csv",header=T, sep=",")
+d_1 <- read.csv("NBAretail_cust_060318_10k.csv",header=T, sep=",")
+d_2 <- read.csv("NBAretail_cust_060318_1k.csv",header=T, sep=",")
 ```
 
-#### Combining datasets (keeping in mind last 1000 are test observations)
+#### Combining datasets
 ```{r}
-d <- rbind(d_train, d_test)
+d <- rbind(d_1, d_2)
+#Clearing environment space
+rm(d_1,d_2)
 ```
 
 #### Removing 'individual_id_new' and 'fan_pmt', as requested
@@ -71,7 +75,7 @@ for(j in 1:length(I_fact)){
 }
 L_fact
 #There are no factors with over 32 levels
-rm(V_fact,I_fact,L_fact,L_temp,x) #clearing environment space
+rm(V_fact,I_fact,L_fact,L_temp,x,j) #clearing environment space
 ```
 
 #### Removing variables without referneces to teams (since team preferences change from season to season)
@@ -87,16 +91,29 @@ for(i in 1:length(a)){ #getting rejected values
 a[TEAMN] #seeing variables to be removed
 d <- d[,-TEAMN] #removing variables
 a <- colnames(d)
-rm(TEAM, TEAMN) #clearing environment space
+rm(TEAM, TEAMN, i) #clearing environment space
 ```
+
+#### Removing arenadis - a variable that refers to teams, as requested
+
+```{r}
+match("arenadis",a)
+colnames(d)[49]
+d <- d[,-49]
+```
+
 ```{r,results='hide',message=FALSE}
+d <- na.omit(d) ## MUST DO FOR LOGISTIC REGRESSION
 attach(d)
 ```
 
-#### Making a training/test set - Recall, last 1000 observations are test observations
+## <a id="DatAn"></a>Data Analysis
+[Skip Model Creation](#end_A)
+
+#### Making a training set vector
 
 ```{r}
-train <- 10001:11000
+train <- sample(1:nrow(d),floor(.8*nrow(d)))
 ```
 
 #### Viewing Response Variable
@@ -111,16 +128,18 @@ for(i in 1:length(a)){ #getting rejected values
 }
 #POSTN
 a[POSTN]
-rm(POST, POSTN) #clearing environment space
+rm(POST, POSTN, i) #clearing environment space
 ```
+
+
 
 ## Creating matrix to record model type and effectiveness
 
 ```{r}
 A_methods <- matrix(c("",""),
                     nrow=1,
-                    ncol=2)
-colnames(A_methods) <- c("Method","Accuracy")
+                    ncol=3)
+colnames(A_methods) <- c("Method","Accuracy","AUC")
 ```
 
 #### Creating dataset with pure Classification Response Vector
@@ -151,13 +170,13 @@ S <- summary(glm.prr)$coefficients
 glm.prr_probs <- predict(glm.prr,type='response')
 glm.prr_pred <- rep(0,nrow(d))
 glm.prr_pred[glm.prr_probs>0.5] <- 1
+#ROC Curves
+glmR <- roc(post_retail_response, glm.prr_probs)
+plot(glmR)
 #Confusion Matrix
 M_glm <- table(glm.prr_pred, post_retail_response)
 M_glm #barely better than 50/50
-A_methods <- rbind(A_methods, c('log',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm)))))
-#ROC Curves
-rocplot_p(glm.prr_probs, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
-rocplot_n(glm.prr_probs, na.omit(d)$post_retail_response)
+A_methods <- rbind(A_methods, c('log',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm))),auc(glmR)))
 #Attempting to improve
 print('Obtaining variables with p-value threshhold of .1')
 S1E1 <- S[ S[,4]<0.1 ,]
@@ -165,6 +184,9 @@ S1E1
 sign1E1 <- rownames(S1E1)
 sign1E1
 ```
+
+#### Improving Model (by removing insignificant variables)
+
 ```{r}
 #creating new logistic regression
 glm.prr1 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
@@ -174,19 +196,19 @@ S1 <- summary(glm.prr1)$coefficients
 glm.prr1_probs <- predict(glm.prr1,type='response')
 glm.prr1_pred <- rep(0,nrow(d))
 glm.prr1_pred[glm.prr1_probs>0.5] <- 1
+#ROC Curves
+glmR1 <- roc(post_retail_response, glm.prr1_probs)
+plot(glmR1)
 #Confusion Matrix
 M_glm1 <- table(glm.prr1_pred, post_retail_response)
 M_glm1 #barely better than 50/50
-A_methods <- rbind(A_methods, c('log1',(1-(M_glm1[1,2]+M_glm1[2,1])/(sum(M_glm1)))))
-#ROC Curves
-##certain variables with NA's removed, using omitted dataset to make predictions
-glm.prr1_ROC <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=na.omit(dataset.prr), family=binomial) 
-glm.prr1_probs_ROC <- predict(glm.prr1_ROC,type='response')
-rocplot_p(glm.prr1_probs_ROC, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
-rocplot_n(glm.prr1_probs_ROC, na.omit(d)$post_retail_response)
+A_methods <- rbind(A_methods, c('log1',(1-(M_glm1[1,2]+M_glm1[2,1])/(sum(M_glm1))),auc(glmR1)))
 #Attempting to improve
 #emailopendays seems useless
 ```
+
+#### Improving Model (by removing insignificant variable emailopendays)
+
 ```{r}
 #creating new logistic regression, without emailopendays
 glm.prr2 <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=dataset.prr, family=binomial)
@@ -197,37 +219,96 @@ S2
 glm.prr2_probs <- predict(glm.prr2,type='response')
 glm.prr2_pred <- rep(0,nrow(d))
 glm.prr2_pred[glm.prr2_probs>0.5] <- 1
+#ROC Curves
+glmR2 <- roc(post_retail_response, glm.prr2_probs)
+plot(glmR2)
 #Confusion Matrix
 M_glm2 <- table(glm.prr2_pred, post_retail_response)
 M_glm2 #barely better than 50/50
-A_methods <- rbind(A_methods, c('log2',(1-(M_glm2[1,2]+M_glm2[2,1])/(sum(M_glm2)))))
-#ROC Curves
-##certain variables with NA's removed, using omitted dataset to make predictions
-glm.prr2_ROC <- glm(post_retail_response ~ days_since_most_recent_email + days_since_most_recent_click + tot_emails_30_days_prior + email_domain_group + ind_nbastore_90d + pre_regular_season_tix + pre_tickets_ever + fan_mths_since_last_purch + fan_purch_web_ind + lp_purch_mc_ind + emailopendays + pre_total_tickets_cat + tot_opens_90dprior_cat + mths_since_purch_cat + fancardcat, data=na.omit(dataset.prr), family=binomial) 
-glm.prr2_probs_ROC <- predict(glm.prr2_ROC,type='response')
-rocplot_p(glm.prr2_probs_ROC, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
-rocplot_n(glm.prr2_probs_ROC, na.omit(d)$post_retail_response)
+A_methods <- rbind(A_methods, c('log2',(1-(M_glm2[1,2]+M_glm2[2,1])/(sum(M_glm2))),auc(glmR2)))
 ```
 
 #### Performing Logistic Regression with Train/Test Sets
 
 ```{r}
 #Creating Training Set & Test Set
-
-glm.prr <- glm(post_retail_response~., data=dataset.prr, family=binomial)
-summary(glm.prr)
-S <- summary(glm.prr)$coefficients
-#Fitting the model probabilities to existing observations
-glm.prr_probs <- predict(glm.prr,type='response')
-glm.prr_pred <- rep(0,nrow(d))
-glm.prr_pred[glm.prr_probs>0.5] <- 1
-#Confusion Matrix
-M_glm <- table(glm.prr_pred, post_retail_response)
-M_glm #barely better than 50/50
-A_methods <- rbind(A_methods, c('log',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm)))))
+glm.prr_tr <- glm(post_retail_response~., data=dataset.prr[train,], family=binomial)
+summary(glm.prr_tr)
+S <- summary(glm.prr_tr)$coefficients
+#Fitting the model probabilities to test observations
+glm.prr_te_probs <- predict(glm.prr_tr,newdata=dataset.prr[-train,],type='response')
+glm.prr_te_pred <- rep(0,nrow(dataset.prr[-train,]))
+glm.prr_te_pred[glm.prr_te_probs>0.5] <- 1
 #ROC Curves
-rocplot_p(glm.prr_probs, na.omit(d)$post_retail_response) #must na.omit transform the data first - only 3271 entries remaining
-rocplot_n(glm.prr_probs, na.omit(d)$post_retail_response)
+glm_trR <- roc(post_retail_response[-train], glm.prr_te_probs)
+plot(glm_trR)
+#Confusion Matrix
+M_glm <- table(glm.prr_te_pred, post_retail_response[-train])
+M_glm #better than 50/50
+A_methods <- rbind(A_methods, c('log_tr',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm))),auc(glm_trR)))
+#Attempting to improve
+print('Obtaining variables with p-value threshhold of .1')
+S1E1 <- S[ S[,4]<0.1 ,]
+S1E1
+```
+
+#### Improving Model (by removing insignificant variables)
+
+```{r}
+#creating new logistic regression
+glm.prr_tr1 <- glm(post_retail_response ~ days_since_most_recent_email+email_domain_group+ind_nbastore_90d+pre_regular_season_tix+pre_tickets_ever+fan_mths_since_last_purch+fan_purch_web_ind+lp_subscriber+lp_purch_amex_ind+lp_purch_mc_ind+emaildays+pre_total_tickets_cat+mths_since_purch_cat+pre_total_tickets, data=dataset.prr[train,], family=binomial)
+#Fitting the model probabilities to test observations
+#Creating Training Set & Test Set
+glm.prr_tr1 <- glm(post_retail_response~., data=dataset.prr[train,], family=binomial)
+summary(glm.prr_tr1)
+S <- summary(glm.prr_tr1)$coefficients
+S <- S[ order(S[,4]), ]
+#Fitting the model probabilities to test observations
+glm.prr_te_probs1 <- predict(glm.prr_tr1,newdata=dataset.prr[-train,],type='response')
+glm.prr_te_pred1 <- rep(0,nrow(dataset.prr[-train,]))
+glm.prr_te_pred1[glm.prr_te_probs1>0.5] <- 1
+#ROC Curves
+glm_trR1 <- roc(post_retail_response[-train], glm.prr_te_probs1)
+plot(glm_trR1)
+#Confusion Matrix
+M_glm <- table(glm.prr_te_pred1, post_retail_response[-train])
+M_glm #better than 50/50
+A_methods <- rbind(A_methods, c('log_tr1',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm))),auc(glm_trR1)))
+#Attempting to improve
+print('Obtaining variables with p-value threshhold of .1')
+S1E1 <- S[ S[,4]<0.1 ,]
+S1E1
+print('All are significant to this value. Obtaining variables with p-value threshhold of .5')
+S1E1 <- S[ S[,4]<0.05 ,]
+S1E1
+```
+
+#### Improving Model (by removing insignificant variables)
+
+```{r}
+#creating new logistic regression
+glm.prr_tr2 <- glm(post_retail_response ~  days_since_most_recent_email+ind_nbastore_90d+pre_tickets_ever+fan_mths_since_last_purch+lp_purch_amex_ind+pre_total_tickets_cat+mths_since_purch_cat, data=dataset.prr[train,], family=binomial)
+#Fitting the model probabilities to test observations
+#Creating Training Set & Test Set
+glm.prr_tr2 <- glm(post_retail_response~., data=dataset.prr[train,], family=binomial)
+summary(glm.prr_tr2)
+S <- summary(glm.prr_tr2)$coefficients
+S <- S[ order(S[,4]), ]
+#Fitting the model probabilities to test observations
+glm.prr_te_probs2 <- predict(glm.prr_tr2,newdata=dataset.prr[-train,],type='response')
+glm.prr_te_pred2 <- rep(0,nrow(dataset.prr[-train,]))
+glm.prr_te_pred2[glm.prr_te_probs2>0.5] <- 1
+#ROC Curves
+glm_trR2 <- roc(post_retail_response[-train], glm.prr_te_probs2)
+plot(glm_trR2)
+#Confusion Matrix
+M_glm <- table(glm.prr_te_pred2, post_retail_response[-train])
+M_glm #better than 50/50
+A_methods <- rbind(A_methods, c('log_tr2',(1-(M_glm[1,2]+M_glm[2,1])/(sum(M_glm))),auc(glm_trR2)))
+#Attempting to improve
+print('Obtaining variables with p-value threshhold of .1')
+S1E1 <- S[ S[,4]<0.1 ,]
+S1E1
 ```
 
 #### Growing Preliminary Classification Tree
@@ -248,20 +329,22 @@ tree.prr_train <- tree(post_retail_response~., dataset.prr, subset=train)
 #Plotting Tree
 plot(tree.prr_train)
 text(tree.prr_train,pretty=0)
-```
-
-#### Calculating, Plotting, and Recording Error Rate
-
-```{r}
 #Fitting model on test set
 tree.prr_pred <- predict(tree.prr_train, dataset.prr[-train,], type="class")
+tree.prr_probs <- predict(tree.prr_train, dataset.prr[-train,])
+tree.prr_probs <- tree.prr_probs[,2]
+#ROC Curves
+treeR <- roc(post_retail_response[-train], tree.prr_probs)
+plot(treeR)
 #Confusion Matrix
 M <- table(tree.prr_pred, post_retail_response[-train])
 M
-A_methods <- rbind(A_methods, c("Tree",(1-(M[1,2]+M[2,1])/(sum(M)))))
+A_methods <- rbind(A_methods, c("Tree",(1-(M[1,2]+M[2,1])/(sum(M))),auc(treeR)))
 ```
+
+#### Cross-Validating to Prune Tree
+
 ```{r,echo=FALSE}
-print(paste("The test error rate is", ((M[1,2]+M[2,1])/(sum(M)))))
 #Cross Validating Tree
 cv.prr_train <- cv.tree(tree.prr_train, FUN=prune.misclass)
 #Looking for best parameter
@@ -278,20 +361,17 @@ prune.prr_train <- prune.misclass(tree.prr_train, best=Best)
 #Plotting Tree
 plot(prune.prr_train)
 text(prune.prr_train,pretty=0)
-```
-
-#### Estimating and Record Error Rate
-
-```{r}
 #Fitting model on test set
 prune.prr_pred <- predict(prune.prr_train, dataset.prr[-train,], type="class")
+prune.prr_probs <- predict(prune.prr_train, dataset.prr[-train,])
+prune.prr_probs <- prune.prr_probs[,2]
+#ROC Curves
+pruneR <- roc(post_retail_response[-train], prune.prr_probs)
+plot(pruneR)
 #Confusion Matrix
 M_prune <- table(prune.prr_pred, post_retail_response[-train])
 M_prune
-A_methods <- rbind(A_methods, c('Cross Validated Tree',(1-(M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
-```
-```{r,echo=FALSE}
-print(paste("The test error rate is", ((M_prune[1,2]+M_prune[2,1])/(sum(M_prune)))))
+A_methods <- rbind(A_methods, c('Cross Validated Tree',(1-(M_prune[1,2]+M_prune[2,1])/(sum(M_prune))),auc(pruneR)))
 ```
 
 #### Creating Bagged Tree
@@ -310,10 +390,15 @@ bag.prr_train <- randomForest(post_retail_response~., data=dataset.prr0, subset=
 #Can't plot tree
 #Fitting tree on test set
 bag.prr_pred <- predict(bag.prr_train, dataset.prr0[-train,], type="class")
+bag.prr_probs <- predict(bag.prr_train, dataset.prr0[-train,], type='prob')
+bag.prr_probs <- bag.prr_probs[,2]
+#ROC Curves
+bagR <- roc(post_retail_response[-train], bag.prr_probs)
+plot(bagR)
 #Confusion Matrix
 M_bag <- table(bag.prr_pred, post_retail_response[-train])
 M_bag
-A_methods <- rbind(A_methods, c('Bagged Tree',(1-(M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
+A_methods <- rbind(A_methods, c('Bagged Tree',(1-(M_bag[1,2]+M_bag[2,1])/(sum(M_bag))),auc(bagR)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_bag[1,2]+M_bag[2,1])/(sum(M_bag)))))
@@ -345,17 +430,18 @@ bag.I[1:15,]
 #Growing Tree
 RF.prr_train <- randomForest(post_retail_response~., data=dataset.prr0, subset=train, ntrees=1000, importance=TRUE)
 #Can't plot tree
-```
 
-#### Estimating and Record Error Rate
-
-```{r}
 #Fitting model on test set
 RF.prr_pred <- predict(RF.prr_train, dataset.prr0[-train,], type="class")
+RF.prr_probs <- predict(RF.prr_train, dataset.prr0[-train,], type='prob')
+RF.prr_probs <- RF.prr_probs[,2]
+#ROC Curves
+RFR <- roc(post_retail_response[-train], RF.prr_probs)
+plot(RFR)
 #Confusion Matrix
 M_RF <- table(RF.prr_pred, post_retail_response[-train])
 M_RF
-A_methods <- rbind(A_methods, c('Random Forest Tree',(1-(M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
+A_methods <- rbind(A_methods, c('Random Forest Tree',(1-(M_RF[1,2]+M_bag[2,1])/(sum(M_RF))),auc(RFR)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_RF[1,2]+M_bag[2,1])/(sum(M_RF)))))
@@ -400,35 +486,36 @@ dataset.prrB$post_retail_response <- y
 #Growing Tree
 boost.prr_train <- gbm(post_retail_response~., data=dataset.prrB[train,], distribution='bernoulli', n.trees=1000, interaction.depth=4)
 #Can't plot tree
-```
 
-#### Estimating and Record Error Rate
-
-```{r}
 #Fitting model on test set
-boost.prr_pred <- predict(boost.prr_train, dataset.prrB[-train,], n.trees=1000)
+boost.prr_probs <- predict(boost.prr_train, dataset.prrB[-train,], n.trees=1000, type='response')
+boost.prr_pred <- ifelse(boost.prr_probs<0.5, 0, 1)
+#ROC Curves
+boostR <- roc(post_retail_response[-train], boost.prr_probs)
+plot(boostR)
 #Confusion Matrix
 M_boost <- table(boost.prr_pred, post_retail_response[-train])
-A_methods <- rbind(A_methods, c('Boosted Tree',(1-(M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
+M_boost
+A_methods <- rbind(A_methods, c('Boosted Tree',(1-(M_boost[1,2]+M_boost[2,1])/(sum(M_boost))),auc(boostR)))
 ```
 ```{r,echo=FALSE}
 print(paste("The test error rate is", ((M_boost[1,2]+M_boost[2,1])/(sum(M_boost)))))
 ```
 
-### <a id="end_A"></a>**A** Looking at Most Effective Method
+### <a id="end_A"></a>Looking at Most Effective Method
 
 ```{r}
 A_methods <- A_methods[-1,]
-A_methods <- A_methods[order(A_methods[,2],decreasing = TRUE),]
-A_methods
-Top <- A_methods[1,]
+A_methods_error <- A_methods[order(A_methods[,2],decreasing = TRUE),]
+A_methods_auc <- A_methods[order(A_methods[,3],decreasing = TRUE),]
+A_methods_error
+A_methods_auc
+Top_error <- A_methods_error[1,]
+Top_auc <- A_methods_auc[1,]
 ```
 ```{r,echo=FALSE}
-print(paste("The most effective method was the",Top[1],", with",Top[2],"accuracy."))
-A_methods <- matrix(c("","",""), #New method matrix initialized
-                    nrow=1,
-                    ncol=3)
-colnames(A_methods) <- c("Method","Mean Squared Error","Square Root MSE")
+print(paste("The most effective by error rate was the",Top_error[1],", with",Top_error[2],"accuracy, and an AUC of",Top_error[3],"."))
+print(paste("The most effective by auc was the",Top_auc[1],", with",Top_auc[2],"accuracy, and an AUC of",Top_auc[3],"."))
 ```
 
 [Back to top](#top)
